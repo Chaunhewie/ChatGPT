@@ -15,7 +15,7 @@ from itchat.content import *
 from channel.channel import Channel
 from common.const import ChannelTypeWX
 from common.tmp_dir import TmpDir
-from config import conf
+from conf.config import get_conf
 
 thread_pool = ThreadPoolExecutor(max_workers=8)
 
@@ -38,6 +38,12 @@ def handler_single_voice(msg):
     return None
 
 
+@itchat.msg_register(VOICE, isGroupChat=True)
+def handler_single_voice(msg):
+    WechatChannel().handle_group_voice(msg)
+    return None
+
+
 class WechatChannel(Channel, ABC):
     def __init__(self):
         super().__init__(ChannelTypeWX)
@@ -46,13 +52,13 @@ class WechatChannel(Channel, ABC):
 
     def startup(self):
         # login by scan QRCode
-        itchat.auto_login(enableCmdQR=2, hotReload=conf().get('wx_hot_reload', False))
+        itchat.auto_login(enableCmdQR=2, hotReload=get_conf('wx.hot_reload', default=False))
 
         # start message listener
         itchat.run()
 
     def handle_voice(self, msg):
-        if not conf().get('speech_recognition'):
+        if not get_conf('speech_recognition'):
             return
         self.debug("receive bot_voice msg: " + msg['FileName'])
         thread_pool.submit(self._do_handle_voice, msg)
@@ -64,10 +70,31 @@ class WechatChannel(Channel, ABC):
             file_name = TmpDir().path() + msg['FileName']
             msg.download(file_name)
             query = super().build_voice_to_text(file_name)
-            if conf().get('voice_reply_voice'):
+            if get_conf('voice_reply_voice'):
                 self._do_send_voice(query, from_user_id)
             else:
                 self._do_send_text(query, from_user_id)
+
+    def handle_group_voice(self, msg):
+        if not get_conf('speech_recognition'):
+            return
+        self.debug("receive bot_voice msg: " + msg['FileName'])
+        thread_pool.submit(self._do_handle_group_voice, msg)
+
+    def _do_handle_group_voice(self, msg):
+        group_name = msg['User'].get('NickName', None)
+        group_id = msg['User'].get('UserName', None)
+        config = get_conf("chat.group.{}".format(group_name), default=None)
+        if config is None:
+            self.debug("group={} not in group list and ignore".format(group_name))
+            return
+        file_name = TmpDir().path() + msg['FileName']
+        msg.download(file_name)
+        query = super().build_voice_to_text(file_name)
+        if get_conf('voice_reply_voice'):
+            self._do_send_voice(query, group_id)
+        else:
+            self._do_send_group(query, msg)
 
     def handle_text(self, msg):
         self.debug("receive text msg: " + json.dumps(msg, ensure_ascii=False))
@@ -75,45 +102,46 @@ class WechatChannel(Channel, ABC):
         self._handle_single_msg(msg, content)
 
     def _handle_single_msg(self, msg, content):
-        from_user_id = msg['FromUserName']
-        to_user_id = msg['ToUserName']  # 接收人id
-        other_user_id = msg['User']['UserName']  # 对手方id
-        match_prefix = self.check_prefix(content, conf().get('single_chat_prefix'))
-        if "」\n- - - - - - - - - - - - - - -" in content:
+        if "- - - - - - - - - - - - - - -" in content:
             self.debug("reference query skipped")
             return
-        if from_user_id == other_user_id and match_prefix is not None:
-            # 好友向自己发送消息
-            if match_prefix != '':
-                str_list = content.split(match_prefix, 1)
-                if len(str_list) == 2:
-                    content = str_list[1].strip()
+        from_user_id = msg['FromUserName']
+        to_user_id = msg['ToUserName']  # 接收人id
+        other_user_id = msg['User']['UserName']  # 对方id
+        self.debug("user {} -> user {}, other_user_id={}".format(from_user_id, to_user_id, other_user_id))
 
-            img_match_prefix = self.check_prefix(content, conf().get('image_create_prefix'))
-            if img_match_prefix:
-                content = content.split(img_match_prefix, 1)[1].strip()
+        prefixs = get_conf('chat.single.prefix')
+        prefix, match_prefix = self.check_prefix(content, prefixs)
+        if not match_prefix:
+            self.debug("not match prefix and return fast")
+            return
+        if len(prefix) > 0:
+            str_list = content.split(prefix, 1)
+            if len(str_list) == 2:
+                content = str_list[1].strip()
+
+        image_prefixs = get_conf('chat.image.prefix')
+        image_prefix, match_image_prefix = self.check_prefix(content, image_prefixs)
+        if len(image_prefix) > 0:
+            str_list = content.split(image_prefix, 1)
+            if len(str_list) == 2:
+                content = str_list[1].strip()
+
+        if from_user_id == other_user_id:
+            # 好友向自己发送消息
+            if match_image_prefix:
                 thread_pool.submit(self._do_send_img, content, from_user_id)
             else:
                 thread_pool.submit(self._do_send_text, content, from_user_id)
-        elif to_user_id == other_user_id and match_prefix:
+        elif to_user_id == other_user_id:
             # 自己给好友发送消息
-            str_list = content.split(match_prefix, 1)
-            if len(str_list) == 2:
-                content = str_list[1].strip()
-            img_match_prefix = self.check_prefix(content, conf().get('image_create_prefix'))
-            if img_match_prefix:
-                content = content.split(img_match_prefix, 1)[1].strip()
+            if match_image_prefix:
                 thread_pool.submit(self._do_send_img, content, to_user_id)
             else:
                 thread_pool.submit(self._do_send_text, content, to_user_id)
 
     def handle_group(self, msg):
         self.debug("receive group msg: " + json.dumps(msg, ensure_ascii=False))
-        group_name = msg['User'].get('NickName', None)
-        group_id = msg['User'].get('UserName', None)
-        if not group_name:
-            return ""
-        origin_content = msg['Content']
         content = msg['Content']
         content_list = content.split(' ', 1)
         context_special_list = content.split('\u2005', 1)
@@ -121,27 +149,51 @@ class WechatChannel(Channel, ABC):
             content = context_special_list[1]
         elif len(content_list) == 2:
             content = content_list[1]
-        if "」\n- - - - - - - - - - - - - - -" in content:
+        if "- - - - - - - - - - - - - - -" in content:
             self.debug("reference query skipped")
             return ""
-        config = conf()
-        match_prefix = (msg['IsAt'] and not config.get("group_at_off", False)) or self.check_prefix(origin_content,
-                                                                                                    config.get(
-                                                                                                        'group_chat_prefix')) \
-                       or self.check_contain(origin_content, config.get('group_chat_keyword'))
-        if ('ALL_GROUP' in config.get('group_name_white_list') or group_name in config.get(
-                'group_name_white_list') or self.check_contain(group_name, config.get(
-            'group_name_keyword_white_list'))) and match_prefix:
-            img_match_prefix = self.check_prefix(content, conf().get('image_create_prefix'))
-            if img_match_prefix:
-                content = content.split(img_match_prefix, 1)[1].strip()
-                thread_pool.submit(self._do_send_img, content, group_id)
-            else:
-                thread_pool.submit(self._do_send_group, content, msg)
+        group_name = msg['User'].get('NickName', None)
+        group_id = msg['User'].get('UserName', None)
+        is_at = msg['IsAt']
+        self.debug("group_name={}, group_id={}, is_at={}".format(group_name, group_id, is_at))
+        if not group_name:
+            self.debug("blank group name and return fast")
+            return ""
+
+        config = get_conf("chat.group.{}".format(group_name), default=None)
+        if config is None:
+            self.debug("group={} not in group list and ignore".format(group_name))
+            return
+        if config.get('must_at', False) and not is_at:
+            self.debug("group={} must @ but check not @ and return fast".format(group_name))
+            return
+
+        prefixs = config.get('prefix', [])
+        prefix, match_prefix = self.check_prefix(content, prefixs)
+        if not match_prefix:
+            self.debug("not match prefix={} and return fast".format(prefixs))
+            return
+        if len(prefix) > 0:
+            str_list = content.split(prefix, 1)
+            if len(str_list) == 2:
+                content = str_list[1].strip()
+
+        image_prefixs = get_conf('chat.image.prefix')
+        image_prefix, match_image_prefix = self.check_prefix(content, image_prefixs)
+        if len(image_prefix) > 0:
+            str_list = content.split(image_prefix, 1)
+            if len(str_list) == 2:
+                content = str_list[1].strip()
+
+        self.debug("match_prefix={}".format(match_prefix))
+        if match_image_prefix:
+            thread_pool.submit(self._do_send_img, content, group_id)
+        else:
+            thread_pool.submit(self._do_send_group, content, msg)
 
     def send(self, msg, receiver):
         itchat.send(msg, toUserName=receiver)
-        self.info('sendMsg={}, receiver={}'.format(msg, receiver))
+        self.debug('sendMsg={}, receiver={}'.format(msg, receiver))
 
     def _do_send_voice(self, query, reply_user_id):
         try:
@@ -152,8 +204,8 @@ class WechatChannel(Channel, ABC):
             reply_text = super().build_reply_content(query, context)
             if reply_text:
                 replyFile = super().build_text_to_voice(reply_text)
-                itchat.send_file(replyFile, toUserName=reply_user_id)
-                self.info('sendFile={}, receiver={}'.format(replyFile, reply_user_id))
+                itchat.send(replyFile, toUserName=reply_user_id)
+                self.debug('sendFile={}, receiver={}'.format(replyFile, reply_user_id))
         except Exception as e:
             self.error(e)
 
@@ -165,7 +217,7 @@ class WechatChannel(Channel, ABC):
             context['session_id'] = reply_user_id
             reply_text = super().build_reply_content(query, context)
             if reply_text:
-                self.send(conf().get("single_chat_reply_prefix") + reply_text, reply_user_id)
+                self.send(get_conf("chat.single.reply_prefix") + reply_text, reply_user_id)
         except Exception as e:
             self.error(e)
 
@@ -188,7 +240,7 @@ class WechatChannel(Channel, ABC):
 
             # 图片发送
             itchat.send_image(image_storage, reply_user_id)
-            self.info('sendImage, receiver={}'.format(reply_user_id))
+            self.debug('sendImage, receiver={}'.format(reply_user_id))
         except Exception as e:
             self.error(e)
 
@@ -198,28 +250,35 @@ class WechatChannel(Channel, ABC):
         context = dict()
         group_name = msg['User']['NickName']
         group_id = msg['User']['UserName']
-        group_chat_in_one_session = conf().get('group_chat_in_one_session', [])
-        if ('ALL_GROUP' in group_chat_in_one_session or \
-                group_name in group_chat_in_one_session or \
-                self.check_contain(group_name, group_chat_in_one_session)):
+        config = get_conf("chat.group.{}".format(group_name), default=None)
+        if config is None:
+            self.debug("group={} not in group list and ignore".format(group_name))
+            return
+        all_in_one_session = config.get('all_in_one_session', True)
+        if all_in_one_session:
             context['session_id'] = group_id
         else:
             context['session_id'] = msg['ActualUserName']
+        self.debug("session_id={}".format(context['session_id']))
         reply_text = super().build_reply_content(query, context)
         if reply_text:
             reply_text = '@' + msg['ActualNickName'] + ' ' + reply_text.strip()
-            self.send(conf().get("group_chat_reply_prefix", "") + reply_text, group_id)
+            self.send(config.get("reply_prefix", "") + reply_text, group_id)
 
-    def check_prefix(self, content, prefix_list):
+    @staticmethod
+    def check_prefix(content, prefix_list):
+        if not prefix_list:
+            return "", False
         for prefix in prefix_list:
             if content.startswith(prefix):
-                return prefix
-        return None
+                return prefix, True
+        return "", False
 
-    def check_contain(self, content, keyword_list):
+    @staticmethod
+    def check_contain(content, keyword_list):
         if not keyword_list:
-            return None
+            return False
         for ky in keyword_list:
             if content.find(ky) != -1:
-                return True
-        return None
+                return ky, True
+        return "", False

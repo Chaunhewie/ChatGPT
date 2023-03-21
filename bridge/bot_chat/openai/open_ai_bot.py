@@ -6,10 +6,14 @@ import openai
 
 from bridge.bot_chat.chat import Chat
 from common.const import BotOpenAI
-from common.log import logger
-from config import conf
+from common.expired_dict import ExpiredDict
+from conf.config import get_conf
 
-user_session = dict()
+expire = get_conf('bot.open_ai.expire_sec', default=0)
+if expire > 0:
+    user_session = ExpiredDict(expire)
+else:
+    user_session = dict()
 
 
 # OpenAI对话模型API (可用)
@@ -17,39 +21,40 @@ class OpenAIBot(Chat):
     def __init__(self):
         super().__init__(BotOpenAI)
         self.name = BotOpenAI
-        openai.api_key = conf().get('open_ai_api_key')
-        if conf().get('open_ai_api_base'):
-            openai.api_base = conf().get('open_ai_api_base')
-        proxy = conf().get('proxy')
-        if proxy:
+        openai.api_key = get_conf('bot.open_ai.api_key')
+        api_base = get_conf('bot.open_ai.api_base', default="")
+        if len(api_base) > 0:
+            openai.api_base = api_base
+        proxy = get_conf('bot.open_ai.proxy', default="")
+        if len(proxy) > 0:
             openai.proxy = proxy
 
     def reply(self, query, context=None):
         # acquire reply content
         if not context or not context.get('type') or context.get('type') == 'TEXT':
-            logger.info("[OPEN_AI] query={}".format(query))
+            self.info("query={}".format(query))
             from_user_id = context.get('from_user_id') or context.get('session_id')
-            if query == '#清除记忆':
+            clear_memory_commands = get_conf('bot.open_ai.clear_memory_commands', default=['#清除记忆'])
+            if query in clear_memory_commands:
                 Session.clear_session(from_user_id)
                 answer = '记忆已清除'
-                logger.info("[OPEN_AI] answer={}".format(answer))
+                self.info("answer={}".format(answer))
                 return answer
-            elif query == '#清除所有':
+            if query == '#清除所有':
                 Session.clear_all_session()
                 answer = '所有人记忆已清除'
-                logger.info("[OPEN_AI] answer={}".format(answer))
+                self.info("answer={}".format(answer))
                 return answer
 
             new_query = Session.build_session_query(query, from_user_id)
-            logger.debug("[OPEN_AI] session query={}".format(new_query))
+            self.debug("session query={}".format(new_query))
 
             reply_content = self.reply_text(new_query, from_user_id, 0)
-            logger.debug(
-                "[OPEN_AI] new_query={}, user={}, reply_cont={}".format(new_query, from_user_id, reply_content))
+            self.debug("user={}, reply_cont={}".format(from_user_id, reply_content))
             if reply_content and query:
                 Session.save_session(query, reply_content, from_user_id)
 
-            logger.info("[OPEN_AI] answer={}".format(reply_content))
+            self.info("answer={}".format(reply_content))
             return reply_content
 
         elif context.get('type', None) == 'IMAGE_CREATE':
@@ -58,7 +63,7 @@ class OpenAIBot(Chat):
     def reply_text(self, query, user_id, retry_count=0):
         try:
             response = openai.Completion.create(
-                model=conf().get("model") or "text-davinci-003",  # 对话模型的名称
+                model=get_conf("model", default="text-davinci-003"),  # 对话模型的名称
                 prompt=query,
                 temperature=0.9,  # 值在[0,1]之间，越大表示回复越具有不确定性
                 max_tokens=1200,  # 回复最大的字符数
@@ -68,44 +73,44 @@ class OpenAIBot(Chat):
                 stop=["\n\n\n"]
             )
             res_content = response.choices[0]['text'].strip().replace('<|endoftext|>', '')
-            logger.info("[OPEN_AI] reply={}".format(res_content))
+            self.info("reply={}".format(res_content))
             return res_content
         except openai.error.RateLimitError as e:
             # rate limit exception
-            logger.warn(e)
             if retry_count < 1:
                 time.sleep(5)
-                logger.warn("[OPEN_AI] RateLimit exceed, 第{}次重试".format(retry_count + 1))
+                self.warn("RateLimit exceed, 第{}次重试".format(retry_count + 1))
                 return self.reply_text(query, user_id, retry_count + 1)
             else:
+                self.warn("RateLimit exceed: {}".format(e))
                 return "提问太快啦，请休息一下再问我吧"
         except Exception as e:
             # unknown exception
-            logger.exception(e)
-            Session.clear_session(user_id)
+            self.error(e)
+            # Session.clear_session(user_id)
             return "请再问我一次吧"
 
     def create_img(self, query, retry_count=0):
         try:
-            logger.info("[OPEN_AI] image_query={}".format(query))
+            self.info("image_query={}".format(query))
             response = openai.Image.create(
                 prompt=query,  # 图片描述
                 n=1,  # 每次生成图片的数量
                 size="512x512"  # 图片大小,可选有 256x256, 512x512, 1024x1024
             )
             image_url = response['data'][0]['url']
-            logger.info("[OPEN_AI] image_url={}".format(image_url))
+            self.info("image_url={}".format(image_url))
             return image_url
         except openai.error.RateLimitError as e:
-            logger.warn(e)
             if retry_count < 1:
                 time.sleep(5)
-                logger.warn("[OPEN_AI] ImgCreate RateLimit exceed, 第{}次重试".format(retry_count + 1))
+                self.warn("ImgCreate RateLimit exceed, 第{}次重试".format(retry_count + 1))
                 return self.reply_text(query, retry_count + 1)
             else:
+                self.warn("ImgCreate RateLimit exceed: {}".format(e))
                 return "提问太快啦，请休息一下再问我吧"
         except Exception as e:
-            logger.exception(e)
+            self.error(e)
             return None
 
 
@@ -121,7 +126,7 @@ class Session(object):
         :param user_id: from user id
         :return: query content with conversaction
         """
-        prompt = conf().get("character_desc", "")
+        prompt = get_conf("character_desc")
         if prompt:
             prompt += "<|endoftext|>\n\n\n"
         session = user_session.get(user_id, None)
@@ -135,16 +140,14 @@ class Session(object):
 
     @staticmethod
     def save_session(query, answer, user_id):
-        max_tokens = conf().get("conversation_max_tokens")
+        max_tokens = get_conf("bot.open_ai.max_tokens")
         if not max_tokens:
-            # default 3000
-            max_tokens = 3000
+            # default 1000
+            max_tokens = 1000
         conversation = dict()
         conversation["question"] = query
         conversation["answer"] = answer
         session = user_session.get(user_id)
-        logger.debug(conversation)
-        logger.debug(session)
         if session:
             # append conversation
             session.append(conversation)

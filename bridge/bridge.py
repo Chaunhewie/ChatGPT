@@ -1,7 +1,7 @@
-from bot_chat import chat_factory
-from bot_voice import voice_factory
+from bridge.bot_chat import chat_factory
+from bridge.bot_voice import voice_factory
 from common import const
-from config import conf
+from conf.config import get_conf
 
 
 class Bridge(object):
@@ -19,7 +19,7 @@ class Bridge(object):
         return voice_factory.create_voice(self.parse_bot_type_t2v()).textToVoice(text)
 
     def parse_bot_type(self):
-        model_type = conf().get("model")
+        model_type = get_conf("model")
         if model_type in self.chat_gpt_models:
             return const.BotChatGPT
         elif model_type in self.open_ai_models:

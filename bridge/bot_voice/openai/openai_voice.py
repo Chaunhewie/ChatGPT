@@ -6,14 +6,14 @@ import openai
 from bridge.bot_voice.voice import Voice
 from common.const import BotVoiceOpenAI
 from common.log import logger
-from config import conf
+from conf.config import get_conf
 
 
 class OpenaiVoice(Voice):
     def __init__(self):
         super().__init__(BotVoiceOpenAI)
         self.name = BotVoiceOpenAI
-        openai.api_key = conf().get('open_ai_api_key')
+        openai.api_key = get_conf('bot.open_ai.api_key')
 
     def voiceToText(self, voice_file):
         logger.debug(

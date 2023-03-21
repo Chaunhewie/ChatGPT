@@ -7,10 +7,11 @@ import openai
 from bridge.bot_chat.chat import Chat
 from common.const import BotChatGPT
 from common.expired_dict import ExpiredDict
-from config import conf
+from conf.config import get_conf
 
-if conf().get('expires_in_seconds', 0) > 0:
-    all_sessions = ExpiredDict(conf().get('expires_in_seconds'))
+expire = get_conf('bot.open_ai.expire_sec', default=0)
+if expire > 0:
+    all_sessions = ExpiredDict(expire)
 else:
     all_sessions = dict()
 
@@ -20,11 +21,12 @@ class ChatGPTBot(Chat):
     def __init__(self):
         super().__init__(BotChatGPT)
         self.name = BotChatGPT
-        openai.api_key = conf().get('open_ai_api_key')
-        if len(conf().get('open_ai_api_base')) > 0:
-            openai.api_base = conf().get('open_ai_api_base')
-        proxy = conf().get('proxy')
-        if proxy:
+        openai.api_key = get_conf('bot.open_ai.api_key')
+        api_base = get_conf('bot.open_ai.api_base', default="")
+        if len(api_base) > 0:
+            openai.api_base = api_base
+        proxy = get_conf('bot.open_ai.proxy', default="")
+        if len(proxy) > 0:
             openai.proxy = proxy
 
     def reply(self, query, context=None):
@@ -32,13 +34,13 @@ class ChatGPTBot(Chat):
         if not context or not context.get('type') or context.get('type') == 'TEXT':
             self.info("query={}".format(query))
             session_id = context.get('session_id') or context.get('from_user_id')
-            clear_memory_commands = conf().get('clear_memory_commands', ['#清除记忆'])
+            clear_memory_commands = get_conf('bot.open_ai.clear_memory_commands', default=['#清除记忆'])
             if query in clear_memory_commands:
                 Session.clear_session(session_id)
                 answer = '记忆已清除'
                 self.info("answer={}".format(answer))
                 return answer
-            elif query == '#清除所有':
+            if query == '#清除所有':
                 Session.clear_all_session()
                 answer = '所有人记忆已清除'
                 self.info("answer={}".format(answer))
@@ -47,13 +49,8 @@ class ChatGPTBot(Chat):
             session = Session.build_session_query(query, session_id)
             self.debug("session query={}".format(session))
 
-            # if context.get('stream'):
-            #     # reply in stream
-            #     return self.reply_text_stream(query, new_query, session_id)
-
             reply_content = self.reply_text(session, session_id, 0)
-            self.debug(
-                "new_query={}, session_id={}, reply_cont={}".format(session, session_id, reply_content["content"]))
+            self.debug("session_id={}, reply_cont={}".format(session_id, reply_content["content"]))
             if reply_content["completion_tokens"] > 0:
                 Session.save_session(reply_content["content"], session_id, reply_content["total_tokens"])
             self.info("answer={}".format(reply_content["content"]))
@@ -73,13 +70,13 @@ class ChatGPTBot(Chat):
         """
         try:
             response = openai.ChatCompletion.create(
-                model=conf().get("model") or "gpt-3.5-turbo",  # 对话模型的名称
+                model=get_conf("model", default="gpt-3.5-turbo"),  # 对话模型的名称
                 messages=session,
-                temperature=conf().get('temperature', 0.9),  # 值在[0,1]之间，越大表示回复越具有不确定性
+                temperature=0.9,  # 值在[0,1]之间，越大表示回复越具有不确定性
                 # max_tokens=4096,  # 回复最大的字符数
                 top_p=1,
-                frequency_penalty=conf().get('frequency_penalty', 0.0),  # [-2,2]之间，该值越大则更倾向于产生不同的内容
-                presence_penalty=conf().get('presence_penalty', 0.0),  # [-2,2]之间，该值越大则更倾向于产生不同的内容
+                frequency_penalty=0.0,  # [-2,2]之间，该值越大则更倾向于产生不同的内容
+                presence_penalty=0.0,  # [-2,2]之间，该值越大则更倾向于产生不同的内容
             )
             self.debug("reply={}, total_tokens={}".format(response.choices[0]['message']['content'],
                                                           response["usage"]["total_tokens"]))
@@ -111,7 +108,7 @@ class ChatGPTBot(Chat):
             response = openai.Image.create(
                 prompt=query,  # 图片描述
                 n=1,  # 每次生成图片的数量
-                size="256x256"  # 图片大小,可选有 256x256, 512x512, 1024x1024
+                size="512x512"  # 图片大小,可选有 256x256, 512x512, 1024x1024
             )
             image_url = response['data'][0]['url']
             self.info("image_url={}".format(image_url))
@@ -146,7 +143,7 @@ class Session(object):
         """
         session = all_sessions.get(session_id, [])
         if len(session) == 0:
-            system_prompt = conf().get("character_desc", "")
+            system_prompt = get_conf("character_desc")
             system_item = {'role': 'system', 'content': system_prompt}
             session.append(system_item)
             all_sessions[session_id] = session
@@ -156,9 +153,9 @@ class Session(object):
 
     @staticmethod
     def save_session(answer, session_id, total_tokens):
-        max_tokens = conf().get("conversation_max_tokens")
+        max_tokens = get_conf("bot.open_ai.max_tokens")
         if not max_tokens:
-            # default 3000
+            # default 1000
             max_tokens = 1000
         max_tokens = int(max_tokens)
 

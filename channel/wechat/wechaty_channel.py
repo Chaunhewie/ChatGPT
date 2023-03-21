@@ -14,13 +14,13 @@ from typing import Optional, Union
 import pysilk
 from pydub import AudioSegment
 from wechaty import Wechaty, Contact
-from wechaty.user import Message, Room, MiniProgram, UrlLink
+from wechaty.user import Message, MiniProgram, UrlLink
 from wechaty_puppet import MessageType, FileBox, ScanStatus  # type: ignore
 
 from channel.channel import Channel
 from common.const import ChannelTypeWXY
 from common.tmp_dir import TmpDir
-from config import conf
+from conf.config import get_conf
 
 
 class WechatyChannel(Channel, ABC):
@@ -33,9 +33,8 @@ class WechatyChannel(Channel, ABC):
         asyncio.run(self.main())
 
     async def main(self):
-        config = conf()
         # 使用PadLocal协议 比较稳定(免费web协议 os.environ['WECHATY_PUPPET_SERVICE_ENDPOINT'] = '127.0.0.1:8080')
-        token = config.get('wechaty_puppet_service_token')
+        token = get_conf('wx.puppet_service_token')
         os.environ['WECHATY_PUPPET_SERVICE_TOKEN'] = token
         global bot
         bot = Wechaty()
@@ -63,34 +62,38 @@ class WechatyChannel(Channel, ABC):
         room = msg.room()  # 获取消息来自的群聊. 如果消息不是来自群聊, 则返回None
         from_user_id = from_contact.contact_id
         to_user_id = to_contact.contact_id  # 接收人id
-        # other_user_id = msg['User']['UserName']  # 对手方id
+        # other_user_id = msg['User']['UserName']  # 对方id
         content = msg.text()
+
         mention_content = await msg.mention_text()  # 返回过滤掉@name后的消息
-        match_prefix = self.check_prefix(content, conf().get('single_chat_prefix'))
-        conversation: Union[Room, Contact] = from_contact if room is None else room
+
+        match_prefix = False
+        match_image_prefix = False
+        if msg.type() == MessageType.MESSAGE_TYPE_TEXT:
+            prefixs = get_conf('chat.single.prefix')
+            prefix, match_prefix = self.check_prefix(content, prefixs)
+            if not match_prefix:
+                self.debug("not match prefix and return fast")
+                return
+            if prefix != '':
+                str_list = content.split(prefix, 1)
+                if len(str_list) == 2:
+                    content = str_list[1].strip()
+            image_prefixs = get_conf('chat.image.prefix')
+            image_prefix, match_image_prefix = self.check_prefix(content, image_prefixs)
+            if match_image_prefix:
+                content = content.split(image_prefix, 1)[1].strip()
 
         if room is None and msg.type() == MessageType.MESSAGE_TYPE_TEXT:
-            if not msg.is_self() and match_prefix is not None:
+            if not msg.is_self():
                 # 好友向自己发送消息
-                if match_prefix != '':
-                    str_list = content.split(match_prefix, 1)
-                    if len(str_list) == 2:
-                        content = str_list[1].strip()
-
-                img_match_prefix = self.check_prefix(content, conf().get('image_create_prefix'))
-                if img_match_prefix:
-                    content = content.split(img_match_prefix, 1)[1].strip()
+                if match_image_prefix:
                     await self._do_send_img(content, from_user_id)
                 else:
                     await self._do_send(content, from_user_id)
             elif msg.is_self() and match_prefix:
                 # 自己给好友发送消息
-                str_list = content.split(match_prefix, 1)
-                if len(str_list) == 2:
-                    content = str_list[1].strip()
-                img_match_prefix = self.check_prefix(content, conf().get('image_create_prefix'))
-                if img_match_prefix:
-                    content = content.split(img_match_prefix, 1)[1].strip()
+                if match_image_prefix:
                     await self._do_send_img(content, to_user_id)
                 else:
                     await self._do_send(content, to_user_id)
@@ -119,20 +122,10 @@ class WechatyChannel(Channel, ABC):
                 self.info("receive bot_voice converter: " + converter_state)
                 # 语音识别为文本
                 query = super().build_voice_to_text(wav_file)
-                # 交验关键字
-                match_prefix = self.check_prefix(query, conf().get('single_chat_prefix'))
-                if match_prefix is not None:
-                    if match_prefix != '':
-                        str_list = query.split(match_prefix, 1)
-                        if len(str_list) == 2:
-                            query = str_list[1].strip()
-                    # 返回消息
-                    if conf().get('voice_reply_voice'):
-                        await self._do_send_voice(query, from_user_id)
-                    else:
-                        await self._do_send(query, from_user_id)
+                if get_conf('voice_reply_voice'):
+                    await self._do_send_voice(query, from_user_id)
                 else:
-                    self.info("receive bot_voice check prefix: " + 'False')
+                    await self._do_send(query, from_user_id)
                 # 清除缓存文件
                 os.remove(wav_file)
                 os.remove(silk_file)
@@ -144,28 +137,44 @@ class WechatyChannel(Channel, ABC):
             from_user_name = from_contact.name
             is_at = await msg.mention_self()
             content = mention_content
-            config = conf()
-            match_prefix = (is_at and not config.get("group_at_off", False)) \
-                           or self.check_prefix(content, config.get('group_chat_prefix')) \
-                           or self.check_contain(content, config.get('group_chat_keyword'))
-            if ('ALL_GROUP' in config.get('group_name_white_list') or room_name in config.get(
-                    'group_name_white_list') or self.check_contain(room_name, config.get(
-                'group_name_keyword_white_list'))) and match_prefix:
-                img_match_prefix = self.check_prefix(content, conf().get('image_create_prefix'))
-                if img_match_prefix:
-                    content = content.split(img_match_prefix, 1)[1].strip()
-                    await self._do_send_group_img(content, room_id)
-                else:
-                    await self._do_send_group(content, room_id, room_name, from_user_id, from_user_name)
+            config = get_conf("chat.group.{}".format(room_name))
+            if config is None:
+                self.debug("room={} not in group list and ignore".format(room_name))
+                return
+            if config.get('must_at', False) and not is_at:
+                self.debug("room={} must @ but check not @ and return fast".format(room_name))
+                return
+
+            prefixs = config.get('prefix', [])
+            prefix, match_prefix = self.check_prefix(content, prefixs)
+            if not match_prefix:
+                self.debug("not match prefix and return fast")
+                return
+            if len(prefix) > 0:
+                str_list = content.split(prefix, 1)
+                if len(str_list) == 2:
+                    content = str_list[1].strip()
+
+            image_prefixs = get_conf('chat.image.prefix')
+            image_prefix, match_image_prefix = self.check_prefix(content, image_prefixs)
+            if len(image_prefix) > 0:
+                str_list = content.split(image_prefix, 1)
+                if len(str_list) == 2:
+                    content = str_list[1].strip()
+
+            if match_image_prefix:
+                await self._do_send_group_img(content, room_id)
+            else:
+                await self._do_send_group(content, room_id, room_name, from_user_id, from_user_name)
 
     async def send(self, message: Union[str, Message, FileBox, Contact, UrlLink, MiniProgram], receiver):
-        self.info('sendMsg={}, receiver={}'.format(message, receiver))
+        self.debug('sendMsg={}, receiver={}'.format(message, receiver))
         if receiver:
             contact = await bot.Contact.find(receiver)
             await contact.say(message)
 
     async def send_group(self, message: Union[str, Message, FileBox, Contact, UrlLink, MiniProgram], receiver):
-        self.info('sendMsg={}, receiver={}'.format(message, receiver))
+        self.debug('sendMsg={}, receiver={}'.format(message, receiver))
         if receiver:
             room = await bot.Room.find(receiver)
             await room.say(message)
@@ -178,7 +187,7 @@ class WechatyChannel(Channel, ABC):
             context['session_id'] = reply_user_id
             reply_text = super().build_reply_content(query, context)
             if reply_text:
-                await self.send(conf().get("single_chat_reply_prefix") + reply_text, reply_user_id)
+                await self.send(get_conf("chat.single.reply_prefix") + reply_text, reply_user_id)
         except Exception as e:
             self.error(e)
 
@@ -242,17 +251,19 @@ class WechatyChannel(Channel, ABC):
         if not query:
             return
         context = dict()
-        group_chat_in_one_session = conf().get('group_chat_in_one_session', [])
-        if ('ALL_GROUP' in group_chat_in_one_session or \
-                group_name in group_chat_in_one_session or \
-                self.check_contain(group_name, group_chat_in_one_session)):
+        config = get_conf("chat.group.{}".format(group_name))
+        if config is None:
+            return
+
+        all_in_one_session = config.get('all_in_one_session', True)
+        if all_in_one_session:
             context['session_id'] = str(group_id)
         else:
             context['session_id'] = str(group_id) + '-' + str(group_user_id)
         reply_text = super().build_reply_content(query, context)
         if reply_text:
             reply_text = '@' + group_user_name + ' ' + reply_text.strip()
-            await self.send_group(conf().get("group_chat_reply_prefix", "") + reply_text, group_id)
+            await self.send_group(config.get("reply_prefix", "") + reply_text, group_id)
 
     async def _do_send_group_img(self, query, reply_room_id):
         try:
@@ -272,10 +283,12 @@ class WechatyChannel(Channel, ABC):
             self.error(e)
 
     def check_prefix(self, content, prefix_list):
+        if not prefix_list:
+            return "", False
         for prefix in prefix_list:
             if content.startswith(prefix):
-                return prefix
-        return None
+                return prefix, True
+        return "", False
 
     def check_contain(self, content, keyword_list):
         if not keyword_list:

@@ -1,7 +1,7 @@
 import os
 import pathlib
 
-from config import conf
+from conf.config import get_conf
 
 
 class TmpDir(object):
@@ -12,7 +12,7 @@ class TmpDir(object):
 
     def __init__(self):
         pathExists = os.path.exists(self.tmpFilePath)
-        if not pathExists and conf().get('speech_recognition') == True:
+        if not pathExists and get_conf('speech_recognition') == True:
             os.makedirs(self.tmpFilePath)
 
     def path(self):

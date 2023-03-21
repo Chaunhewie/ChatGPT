@@ -4,7 +4,7 @@ Message sending channel abstract class
 
 from bridge.bridge import Bridge
 from common.log import logger
-from config import load_config
+from conf.config import load_config
 
 
 class Channel(object):

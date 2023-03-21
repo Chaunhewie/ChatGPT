@@ -1,8 +1,8 @@
 # encoding:utf-8
 
-import config
 from channel import channel_factory
 from common.log import logger
+from conf import config
 
 if __name__ == '__main__':
     try:
@@ -10,7 +10,7 @@ if __name__ == '__main__':
         config.load_config()
 
         # create channel
-        channel = channel_factory.create_channel(config.conf()["channel"])
+        channel = channel_factory.create_channel(config.get_conf("channel"))
 
         # startup channel
         channel.startup()

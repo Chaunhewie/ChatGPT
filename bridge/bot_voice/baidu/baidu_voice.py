@@ -9,13 +9,13 @@ from aip import AipSpeech
 from bridge.bot_voice.voice import Voice
 from common.const import BotVoiceBaidu
 from common.tmp_dir import TmpDir
-from config import conf
+from conf.config import get_conf
 
 
 class BaiduVoice(Voice):
-    APP_ID = conf().get('baidu_app_id')
-    API_KEY = conf().get('baidu_api_key')
-    SECRET_KEY = conf().get('baidu_secret_key')
+    APP_ID = get_conf('bot.baidu_voice.app_id')
+    API_KEY = get_conf('bot.baidu_voice.api_key')
+    SECRET_KEY = get_conf('bot.baidu_voice.secret_key')
     client = AipSpeech(APP_ID, API_KEY, SECRET_KEY)
 
     def __init__(self):

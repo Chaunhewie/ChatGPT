@@ -4,8 +4,9 @@
 __pycache__/
 venv*
 *.pyc
-config.json
+conf/config.json
 QR.png
 nohup.out
 tmp
 logs/
+itchat.pkl
