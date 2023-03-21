@@ -3,7 +3,7 @@ import json
 
 import requests
 
-from bot_chat.chat import Chat
+from bridge.bot_chat.chat import Chat
 from common.const import BotBaidu
 
 

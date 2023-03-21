@@ -4,7 +4,7 @@ import time
 
 import openai
 
-from bot_chat.chat import Chat
+from bridge.bot_chat.chat import Chat
 from common.const import BotOpenAI
 from common.log import logger
 from config import conf

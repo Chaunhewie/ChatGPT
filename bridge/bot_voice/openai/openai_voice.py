@@ -3,7 +3,7 @@ google bot_voice service
 """
 import openai
 
-from bot_voice.voice import Voice
+from bridge.bot_voice.voice import Voice
 from common.const import BotVoiceOpenAI
 from common.log import logger
 from config import conf

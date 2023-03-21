@@ -4,7 +4,7 @@ import time
 
 import openai
 
-from bot_chat.chat import Chat
+from bridge.bot_chat.chat import Chat
 from common.const import BotChatGPT
 from common.expired_dict import ExpiredDict
 from config import conf

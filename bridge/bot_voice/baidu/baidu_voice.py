@@ -6,7 +6,7 @@ import time
 
 from aip import AipSpeech
 
-from bot_voice.voice import Voice
+from bridge.bot_voice.voice import Voice
 from common.const import BotVoiceBaidu
 from common.tmp_dir import TmpDir
 from config import conf

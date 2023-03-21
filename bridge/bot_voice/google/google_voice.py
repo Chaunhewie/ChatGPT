@@ -8,7 +8,7 @@ import time
 import pyttsx3
 import speech_recognition
 
-from bot_voice.voice import Voice
+from bridge.bot_voice.voice import Voice
 from common.const import BotVoiceGoogle
 from common.log import logger
 from common.tmp_dir import TmpDir
