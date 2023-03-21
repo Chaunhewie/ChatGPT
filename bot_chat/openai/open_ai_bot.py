@@ -91,7 +91,7 @@ class OpenAIBot(Chat):
             response = openai.Image.create(
                 prompt=query,  # 图片描述
                 n=1,  # 每次生成图片的数量
-                size="256x256"  # 图片大小,可选有 256x256, 512x512, 1024x1024
+                size="512x512"  # 图片大小,可选有 256x256, 512x512, 1024x1024
             )
             image_url = response['data'][0]['url']
             logger.info("[OPEN_AI] image_url={}".format(image_url))
@@ -138,7 +138,7 @@ class Session(object):
         max_tokens = conf().get("conversation_max_tokens")
         if not max_tokens:
             # default 3000
-            max_tokens = 1000
+            max_tokens = 3000
         conversation = dict()
         conversation["question"] = query
         conversation["answer"] = answer
