@@ -52,7 +52,7 @@ class WechatChannel(Channel):
         itchat.run()
 
     def handle_voice(self, msg):
-        if conf().get('speech_recognition') != True:
+        if not conf().get('speech_recognition'):
             return
         logger.debug("[WX]receive bot_voice msg: " + msg['FileName'])
         thread_pool.submit(self._do_handle_voice, msg)
