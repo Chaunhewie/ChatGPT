@@ -3,9 +3,9 @@
 """
 wechat channel
 """
-
 import io
 import json
+from abc import ABC
 from concurrent.futures import ThreadPoolExecutor
 
 import itchat
@@ -14,7 +14,6 @@ from itchat.content import *
 
 from channel.channel import Channel
 from common.const import ChannelTypeWX
-from common.log import logger
 from common.tmp_dir import TmpDir
 from config import conf
 
@@ -39,14 +38,15 @@ def handler_single_voice(msg):
     return None
 
 
-class WechatChannel(Channel):
+class WechatChannel(Channel, ABC):
     def __init__(self):
+        super().__init__(ChannelTypeWX)
         self.name = ChannelTypeWX
         pass
 
     def startup(self):
         # login by scan QRCode
-        itchat.auto_login(enableCmdQR=2, hotReload=conf().get('hot_reload', False))
+        itchat.auto_login(enableCmdQR=2, hotReload=conf().get('wx_hot_reload', False))
 
         # start message listener
         itchat.run()
@@ -54,7 +54,7 @@ class WechatChannel(Channel):
     def handle_voice(self, msg):
         if not conf().get('speech_recognition'):
             return
-        logger.debug("[WX]receive bot_voice msg: " + msg['FileName'])
+        self.debug("receive bot_voice msg: " + msg['FileName'])
         thread_pool.submit(self._do_handle_voice, msg)
 
     def _do_handle_voice(self, msg):
@@ -70,7 +70,7 @@ class WechatChannel(Channel):
                 self._do_send_text(query, from_user_id)
 
     def handle_text(self, msg):
-        logger.debug("[WX]receive text msg: " + json.dumps(msg, ensure_ascii=False))
+        self.debug("receive text msg: " + json.dumps(msg, ensure_ascii=False))
         content = msg['Text']
         self._handle_single_msg(msg, content)
 
@@ -80,7 +80,7 @@ class WechatChannel(Channel):
         other_user_id = msg['User']['UserName']  # 对手方id
         match_prefix = self.check_prefix(content, conf().get('single_chat_prefix'))
         if "」\n- - - - - - - - - - - - - - -" in content:
-            logger.debug("[WX]reference query skipped")
+            self.debug("reference query skipped")
             return
         if from_user_id == other_user_id and match_prefix is not None:
             # 好友向自己发送消息
@@ -108,7 +108,7 @@ class WechatChannel(Channel):
                 thread_pool.submit(self._do_send_text, content, to_user_id)
 
     def handle_group(self, msg):
-        logger.debug("[WX]receive group msg: " + json.dumps(msg, ensure_ascii=False))
+        self.debug("receive group msg: " + json.dumps(msg, ensure_ascii=False))
         group_name = msg['User'].get('NickName', None)
         group_id = msg['User'].get('UserName', None)
         if not group_name:
@@ -122,7 +122,7 @@ class WechatChannel(Channel):
         elif len(content_list) == 2:
             content = content_list[1]
         if "」\n- - - - - - - - - - - - - - -" in content:
-            logger.debug("[WX]reference query skipped")
+            self.debug("reference query skipped")
             return ""
         config = conf()
         match_prefix = (msg['IsAt'] and not config.get("group_at_off", False)) or self.check_prefix(origin_content,
@@ -141,7 +141,7 @@ class WechatChannel(Channel):
 
     def send(self, msg, receiver):
         itchat.send(msg, toUserName=receiver)
-        logger.info('[WX] sendMsg={}, receiver={}'.format(msg, receiver))
+        self.info('sendMsg={}, receiver={}'.format(msg, receiver))
 
     def _do_send_voice(self, query, reply_user_id):
         try:
@@ -153,9 +153,9 @@ class WechatChannel(Channel):
             if reply_text:
                 replyFile = super().build_text_to_voice(reply_text)
                 itchat.send_file(replyFile, toUserName=reply_user_id)
-                logger.info('[WX] sendFile={}, receiver={}'.format(replyFile, reply_user_id))
+                self.info('sendFile={}, receiver={}'.format(replyFile, reply_user_id))
         except Exception as e:
-            logger.exception(e)
+            self.error(e)
 
     def _do_send_text(self, query, reply_user_id):
         try:
@@ -167,7 +167,7 @@ class WechatChannel(Channel):
             if reply_text:
                 self.send(conf().get("single_chat_reply_prefix") + reply_text, reply_user_id)
         except Exception as e:
-            logger.exception(e)
+            self.error(e)
 
     def _do_send_img(self, query, reply_user_id):
         try:
@@ -188,9 +188,9 @@ class WechatChannel(Channel):
 
             # 图片发送
             itchat.send_image(image_storage, reply_user_id)
-            logger.info('[WX] sendImage, receiver={}'.format(reply_user_id))
+            self.info('sendImage, receiver={}'.format(reply_user_id))
         except Exception as e:
-            logger.exception(e)
+            self.error(e)
 
     def _do_send_group(self, query, msg):
         if not query:

@@ -7,6 +7,7 @@ from common.const import ChannelTypeTerminal
 
 class TerminalChannel(Channel, ABC):
     def __init__(self):
+        super().__init__(ChannelTypeTerminal)
         self.name = ChannelTypeTerminal
 
     def startup(self):

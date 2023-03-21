@@ -1,7 +1,13 @@
 {
-  "open_ai_api_key": "YOUR API KEY",
   "model": "gpt-3.5-turbo",
-  "channel": "terminal",
+  "channel": "Terminal",
+  "open_ai_api_key": "YOUR API KEY",
+  "open_ai_api_base": "",
+  "baidu_ak": "YOUR BAIDU ACCESS KEY",
+  "baidu_sk": "YOUR BAIDU SECRET KEY",
+  "wx_app_id": "YOUR WECHAT BOT APPID",
+  "wx_token": "YOUR WECHAT BOT TOKEN",
+  "wx_encoding_aes_key": "YOUR WECHAT BOT TOKEN",
   "proxy": "",
   "single_chat_prefix": [
     "bot",
@@ -20,6 +26,7 @@
     "看",
     "找"
   ],
+  "wx_hot_reload": false,
   "speech_recognition": false,
   "voice_reply_voice": false,
   "conversation_max_tokens": 1000,

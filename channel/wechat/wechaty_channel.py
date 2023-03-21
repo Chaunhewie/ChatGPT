@@ -19,7 +19,6 @@ from wechaty_puppet import MessageType, FileBox, ScanStatus  # type: ignore
 
 from channel.channel import Channel
 from common.const import ChannelTypeWXY
-from common.log import logger
 from common.tmp_dir import TmpDir
 from config import conf
 
@@ -27,6 +26,7 @@ from config import conf
 class WechatyChannel(Channel, ABC):
 
     def __init__(self):
+        super().__init__(ChannelTypeWXY)
         self.name = ChannelTypeWXY
 
     def startup(self):
@@ -46,12 +46,12 @@ class WechatyChannel(Channel, ABC):
         await bot.start()
 
     async def on_login(self, contact: Contact):
-        logger.info('[WX] login user={}'.format(contact))
+        self.info('login user={}'.format(contact))
 
     async def on_scan(self, status: ScanStatus, qr_code: Optional[str] = None,
                       data: Optional[str] = None):
         contact = self.Contact.load(self.contact_id)
-        logger.info('[WX] scan user={}, scan status={}, scan qr_code={}'.format(contact, status.name, qr_code))
+        self.info('scan user={}, scan status={}, scan qr_code={}'.format(contact, status.name, qr_code))
         # print(f'user <{contact}> scan status: {status.name} , 'f'qr_code: {qr_code}')
 
     async def on_message(self, msg: Message):
@@ -100,7 +100,7 @@ class WechatyChannel(Channel, ABC):
                 voice_file = await msg.to_file_box()
                 silk_file = TmpDir().path() + voice_file.name
                 await voice_file.to_file(silk_file)
-                logger.info("[WX]receive bot_voice file: " + silk_file)
+                self.info("receive bot_voice file: " + silk_file)
                 # 将文件转成wav格式音频
                 wav_file = silk_file.replace(".slk", ".wav")
                 with open(silk_file, 'rb') as f:
@@ -116,7 +116,7 @@ class WechatyChannel(Channel, ABC):
                     converter_state = "true"  # 转换wav成功
                 else:
                     converter_state = "false"  # 转换wav失败
-                logger.info("[WX]receive bot_voice converter: " + converter_state)
+                self.info("receive bot_voice converter: " + converter_state)
                 # 语音识别为文本
                 query = super().build_voice_to_text(wav_file)
                 # 交验关键字
@@ -132,7 +132,7 @@ class WechatyChannel(Channel, ABC):
                     else:
                         await self._do_send(query, from_user_id)
                 else:
-                    logger.info("[WX]receive bot_voice check prefix: " + 'False')
+                    self.info("receive bot_voice check prefix: " + 'False')
                 # 清除缓存文件
                 os.remove(wav_file)
                 os.remove(silk_file)
@@ -159,13 +159,13 @@ class WechatyChannel(Channel, ABC):
                     await self._do_send_group(content, room_id, room_name, from_user_id, from_user_name)
 
     async def send(self, message: Union[str, Message, FileBox, Contact, UrlLink, MiniProgram], receiver):
-        logger.info('[WX] sendMsg={}, receiver={}'.format(message, receiver))
+        self.info('sendMsg={}, receiver={}'.format(message, receiver))
         if receiver:
             contact = await bot.Contact.find(receiver)
             await contact.say(message)
 
     async def send_group(self, message: Union[str, Message, FileBox, Contact, UrlLink, MiniProgram], receiver):
-        logger.info('[WX] sendMsg={}, receiver={}'.format(message, receiver))
+        self.info('sendMsg={}, receiver={}'.format(message, receiver))
         if receiver:
             room = await bot.Room.find(receiver)
             await room.say(message)
@@ -180,7 +180,7 @@ class WechatyChannel(Channel, ABC):
             if reply_text:
                 await self.send(conf().get("single_chat_reply_prefix") + reply_text, reply_user_id)
         except Exception as e:
-            logger.exception(e)
+            self.error(e)
 
     async def _do_send_voice(self, query, reply_user_id):
         try:
@@ -212,7 +212,7 @@ class WechatyChannel(Channel, ABC):
                 os.remove(mp3_file)
                 os.remove(silk_file)
         except Exception as e:
-            logger.exception(e)
+            self.error(e)
 
     async def _do_send_img(self, query, reply_user_id):
         try:
@@ -231,12 +231,12 @@ class WechatyChannel(Channel, ABC):
             # image_storage.seek(0)
 
             # 图片发送
-            logger.info('[WX] sendImage, receiver={}'.format(reply_user_id))
+            self.info('sendImage, receiver={}'.format(reply_user_id))
             t = int(time.time())
             file_box = FileBox.from_url(url=img_url, name=str(t) + '.png')
             await self.send(file_box, reply_user_id)
         except Exception as e:
-            logger.exception(e)
+            self.error(e)
 
     async def _do_send_group(self, query, group_id, group_name, group_user_id, group_user_name):
         if not query:
@@ -264,12 +264,12 @@ class WechatyChannel(Channel, ABC):
             if not img_url:
                 return
             # 图片发送
-            logger.info('[WX] sendImage, receiver={}'.format(reply_room_id))
+            self.info('sendImage, receiver={}'.format(reply_room_id))
             t = int(time.time())
             file_box = FileBox.from_url(url=img_url, name=str(t) + '.png')
             await self.send_group(file_box, reply_room_id)
         except Exception as e:
-            logger.exception(e)
+            self.error(e)
 
     def check_prefix(self, content, prefix_list):
         for prefix in prefix_list:

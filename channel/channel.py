@@ -3,10 +3,26 @@ Message sending channel abstract class
 """
 
 from bridge.bridge import Bridge
+from common.log import logger
 from config import load_config
 
 
 class Channel(object):
+    def __init__(self, name: str):
+        self.name = name
+
+    def debug(self, msg):
+        logger.debug("[{}] {}".format(self.name, msg), stacklevel=2)
+
+    def info(self, msg):
+        logger.info("[{}] {}".format(self.name, msg), stacklevel=2)
+
+    def warn(self, msg):
+        logger.warn("[{}] {}".format(self.name, msg), stacklevel=2)
+
+    def error(self, msg):
+        logger.error("[{}] {}".format(self.name, msg), stacklevel=2)
+
     def startup(self):
         """
         init channel

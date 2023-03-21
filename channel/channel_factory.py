@@ -1,7 +1,7 @@
 """
 channel factory
 """
-from common.const import ChannelTypeWX, ChannelTypeWXY, ChannelTypeTerminal
+from common.const import ChannelTypeWX, ChannelTypeWXY, ChannelTypeWXAPI, ChannelTypeTerminal
 
 
 def create_channel(channel_type):
@@ -16,6 +16,9 @@ def create_channel(channel_type):
     elif channel_type == ChannelTypeWXY:
         from channel.wechat.wechaty_channel import WechatyChannel
         return WechatyChannel()
+    elif channel_type == ChannelTypeWXAPI:
+        from channel.wechat.wechat_api_channel import WechatAPIChannel
+        return WechatAPIChannel()
     elif channel_type == ChannelTypeTerminal:
         from channel.terminal.terminal_channel import TerminalChannel
         return TerminalChannel()
