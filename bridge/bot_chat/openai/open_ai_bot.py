@@ -5,15 +5,9 @@ import time
 import openai
 
 from bridge.bot_chat.chat import Chat
+from bridge.bot_chat.session.session import UserSession
 from common.const import BotOpenAI
-from common.expired_dict import ExpiredDict
 from conf.config import get_conf
-
-expire = get_conf('bot.open_ai.expire_sec', default=0)
-if expire > 0:
-    user_session = ExpiredDict(expire)
-else:
-    user_session = dict()
 
 
 # OpenAI对话模型API (可用)
@@ -33,26 +27,19 @@ class OpenAIBot(Chat):
         # acquire reply content
         if not context or not context.get('type') or context.get('type') == 'TEXT':
             self.info("query={}".format(query))
-            from_user_id = context.get('from_user_id') or context.get('session_id')
-            clear_memory_commands = get_conf('bot.open_ai.clear_memory_commands', default=['#清除记忆'])
-            if query in clear_memory_commands:
-                Session.clear_session(from_user_id)
-                answer = '记忆已清除'
-                self.info("answer={}".format(answer))
-                return answer
-            if query == '#清除所有':
-                Session.clear_all_session()
-                answer = '所有人记忆已清除'
-                self.info("answer={}".format(answer))
-                return answer
 
-            new_query = Session.build_session_query(query, from_user_id)
+            from_user_id = context.get('from_user_id') or context.get('session_id')
+            answer = UserSession.check_and_clear(query, from_user_id)
+            if len(answer) > 0:
+                self.info("answer={}".format(answer))
+                return answer
+            new_query = UserSession.build_session_query(query, from_user_id)
             self.debug("session query={}".format(new_query))
 
             reply_content = self.reply_text(new_query, from_user_id, 0)
             self.debug("user={}, reply_cont={}".format(from_user_id, reply_content))
             if reply_content and query:
-                Session.save_session(query, reply_content, from_user_id)
+                UserSession.save_session(query, reply_content, from_user_id)
 
             self.info("answer={}".format(reply_content))
             return reply_content
@@ -112,73 +99,3 @@ class OpenAIBot(Chat):
         except Exception as e:
             self.error(e)
             return None
-
-
-class Session(object):
-    @staticmethod
-    def build_session_query(query, user_id):
-        """
-        build query with conversation history
-        e.g.  Q: xxx
-              A: xxx
-              Q: xxx
-        :param query: query content
-        :param user_id: from user id
-        :return: query content with conversaction
-        """
-        prompt = get_conf("character_desc")
-        if prompt:
-            prompt += "<|endoftext|>\n\n\n"
-        session = user_session.get(user_id, None)
-        if session:
-            for conversation in session:
-                prompt += "Q: " + conversation["question"] + "\n\n\nA: " + conversation["answer"] + "<|endoftext|>\n"
-            prompt += "Q: " + query + "\nA: "
-            return prompt
-        else:
-            return prompt + "Q: " + query + "\nA: "
-
-    @staticmethod
-    def save_session(query, answer, user_id):
-        max_tokens = get_conf("bot.open_ai.max_tokens")
-        if not max_tokens:
-            # default 1000
-            max_tokens = 1000
-        conversation = dict()
-        conversation["question"] = query
-        conversation["answer"] = answer
-        session = user_session.get(user_id)
-        if session:
-            # append conversation
-            session.append(conversation)
-        else:
-            # create session
-            queue = list()
-            queue.append(conversation)
-            user_session[user_id] = queue
-
-        # discard exceed limit conversation
-        Session.discard_exceed_conversation(user_session[user_id], max_tokens)
-
-    @staticmethod
-    def discard_exceed_conversation(session, max_tokens):
-        count = 0
-        count_list = list()
-        for i in range(len(session) - 1, -1, -1):
-            # count tokens of conversation list
-            history_conv = session[i]
-            count += len(history_conv["question"]) + len(history_conv["answer"])
-            count_list.append(count)
-
-        for c in count_list:
-            if c > max_tokens:
-                # pop first conversation
-                session.pop(0)
-
-    @staticmethod
-    def clear_session(user_id):
-        user_session[user_id] = []
-
-    @staticmethod
-    def clear_all_session():
-        user_session.clear()

@@ -29,22 +29,6 @@ class Channel(object):
         """
         raise NotImplementedError
 
-    def handle_text(self, msg):
-        """
-        process received msg
-        :param msg: message object
-        """
-        raise NotImplementedError
-
-    def send(self, msg, receiver):
-        """
-        send message to user
-        :param msg: message content
-        :param receiver: receiver channel account
-        :return: 
-        """
-        raise NotImplementedError
-
     @staticmethod
     def build_reply_content(query, context=None):
         if query == '#更新配置':

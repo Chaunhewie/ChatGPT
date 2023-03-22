@@ -26,14 +26,13 @@ class BaiduVoice(Voice):
         pass
 
     def textToVoice(self, text):
-        result = self.client.synthesis(text, 'zh', 1, {
-            'spd': 5, 'pit': 5, 'vol': 5, 'per': 111
-        })
+        self.info('textToVoice text={}'.format(text))
+        result = self.client.synthesis(text, 'zh', 1, {'spd': 5, 'pit': 5, 'vol': 5, 'per': 111})
         if not isinstance(result, dict):
             fileName = TmpDir().path() + '语音回复_' + str(int(time.time())) + '.mp3'
             with open(fileName, 'wb') as f:
                 f.write(result)
-            self.info('textToVoice text={} bot_voice file name={}'.format(text, fileName))
+            self.info('bot_voice file name={}'.format(fileName))
             return fileName
         else:
             self.error('textToVoice error={}'.format(result))

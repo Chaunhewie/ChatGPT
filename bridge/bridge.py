@@ -8,6 +8,8 @@ class Bridge(object):
     def __init__(self):
         self.chat_gpt_models = ["gpt-3.5-turbo", "gpt-4", "gpt-4-32k"]
         self.open_ai_models = ["text-davinci-003"]
+        self.open_ai_v2t_models = ["whisper-1"]
+        self.open_ai_t2v_models = []
 
     def fetch_reply_content(self, query, context):
         return chat_factory.create_bot(self.parse_bot_type()).reply(query, context)
@@ -27,7 +29,13 @@ class Bridge(object):
         return const.BotChatGPT
 
     def parse_bot_type_v2t(self):
-        return const.BotVoiceOpenAI
+        model_type = get_conf("model_v2t")
+        if model_type in self.open_ai_v2t_models:
+            return const.BotVoiceOpenAI
+        return const.BotVoiceGoogle
 
     def parse_bot_type_t2v(self):
-        return const.BotVoiceBaidu
+        model_type = get_conf("model_t2v")
+        if model_type in self.open_ai_t2v_models:
+            return const.BotVoiceOpenAI
+        return const.BotVoiceGoogle

@@ -5,15 +5,9 @@ import time
 import openai
 
 from bridge.bot_chat.chat import Chat
+from bridge.bot_chat.session.session import Session
 from common.const import BotChatGPT
-from common.expired_dict import ExpiredDict
 from conf.config import get_conf
-
-expire = get_conf('bot.open_ai.expire_sec', default=0)
-if expire > 0:
-    all_sessions = ExpiredDict(expire)
-else:
-    all_sessions = dict()
 
 
 # OpenAI对话模型API (可用)
@@ -33,19 +27,12 @@ class ChatGPTBot(Chat):
         # acquire reply content
         if not context or not context.get('type') or context.get('type') == 'TEXT':
             self.info("query={}".format(query))
-            session_id = context.get('session_id') or context.get('from_user_id')
-            clear_memory_commands = get_conf('bot.open_ai.clear_memory_commands', default=['#清除记忆'])
-            if query in clear_memory_commands:
-                Session.clear_session(session_id)
-                answer = '记忆已清除'
-                self.info("answer={}".format(answer))
-                return answer
-            if query == '#清除所有':
-                Session.clear_all_session()
-                answer = '所有人记忆已清除'
-                self.info("answer={}".format(answer))
-                return answer
 
+            session_id = context.get('session_id') or context.get('from_user_id')
+            answer = Session.check_and_clear(query, session_id)
+            if len(answer) > 0:
+                self.info("answer={}".format(answer))
+                return answer
             session = Session.build_session_query(query, session_id)
             self.debug("session query={}".format(session))
 
@@ -124,67 +111,3 @@ class ChatGPTBot(Chat):
         except Exception as e:
             self.error("unknown err: {}".format(e))
             return None
-
-
-class Session(object):
-    @staticmethod
-    def build_session_query(query, session_id):
-        """
-        build query with conversation history
-        e.g.  [
-            {"role": "system", "content": "You are a helpful assistant."},
-            {"role": "user", "content": "Who won the world series in 2020?"},
-            {"role": "assistant", "content": "The Los Angeles Dodgers won the World Series in 2020."},
-            {"role": "user", "content": "Where was it played?"}
-        ]
-        :param query: query content
-        :param session_id: session id
-        :return: query content with conversation
-        """
-        session = all_sessions.get(session_id, [])
-        if len(session) == 0:
-            system_prompt = get_conf("character_desc")
-            system_item = {'role': 'system', 'content': system_prompt}
-            session.append(system_item)
-            all_sessions[session_id] = session
-        user_item = {'role': 'user', 'content': query}
-        session.append(user_item)
-        return session
-
-    @staticmethod
-    def save_session(answer, session_id, total_tokens):
-        max_tokens = get_conf("bot.open_ai.max_tokens")
-        if not max_tokens:
-            # default 1000
-            max_tokens = 1000
-        max_tokens = int(max_tokens)
-
-        session = all_sessions.get(session_id)
-        if session:
-            # append conversation
-            gpt_item = {'role': 'assistant', 'content': answer}
-            session.append(gpt_item)
-
-        # discard exceed limit conversation
-        Session.discard_exceed_conversation(session, max_tokens, total_tokens)
-
-    @staticmethod
-    def discard_exceed_conversation(session, max_tokens, total_tokens):
-        dec_tokens = int(total_tokens)
-        # logger.info("prompt tokens used={},max_tokens={}".format(used_tokens,max_tokens))
-        while dec_tokens > max_tokens:
-            # pop first conversation
-            if len(session) > 3:
-                session.pop(1)
-                session.pop(1)
-            else:
-                break
-            dec_tokens = dec_tokens - max_tokens
-
-    @staticmethod
-    def clear_session(session_id):
-        all_sessions[session_id] = []
-
-    @staticmethod
-    def clear_all_session():
-        all_sessions.clear()

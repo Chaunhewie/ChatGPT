@@ -20,6 +20,7 @@ from wechaty_puppet import MessageType, FileBox, ScanStatus  # type: ignore
 from channel.channel import Channel
 from common.const import ChannelTypeWXY
 from common.tmp_dir import TmpDir
+from common.utils import parse_prefix
 from conf.config import get_conf
 
 
@@ -57,12 +58,11 @@ class WechatyChannel(Channel, ABC):
         """
         listen for message event
         """
-        from_contact = msg.talker()  # 获取消息的发送者
-        to_contact = msg.to()  # 接收人
+        from_contact = msg.talker()  # 发送者
+        to_contact = msg.to()  # 接收者
         room = msg.room()  # 获取消息来自的群聊. 如果消息不是来自群聊, 则返回None
-        from_user_id = from_contact.contact_id
+        from_user_id = from_contact.contact_id  # 发送人id
         to_user_id = to_contact.contact_id  # 接收人id
-        # other_user_id = msg['User']['UserName']  # 对方id
         content = msg.text()
 
         mention_content = await msg.mention_text()  # 返回过滤掉@name后的消息
@@ -71,19 +71,11 @@ class WechatyChannel(Channel, ABC):
         match_image_prefix = False
         if msg.type() == MessageType.MESSAGE_TYPE_TEXT:
             prefixs = get_conf('chat.single.prefix')
-            prefix, match_prefix = self.check_prefix(content, prefixs)
+            image_prefixs = get_conf('chat.image.prefix')
+            prefix, match_prefix, image_prefix, match_image_prefix, content = parse_prefix(content, prefixs, image_prefixs)
             if not match_prefix:
                 self.debug("not match prefix and return fast")
                 return
-            if prefix != '':
-                str_list = content.split(prefix, 1)
-                if len(str_list) == 2:
-                    content = str_list[1].strip()
-            image_prefixs = get_conf('chat.image.prefix')
-            image_prefix, match_image_prefix = self.check_prefix(content, image_prefixs)
-            if match_image_prefix:
-                content = content.split(image_prefix, 1)[1].strip()
-
         if room is None and msg.type() == MessageType.MESSAGE_TYPE_TEXT:
             if not msg.is_self():
                 # 好友向自己发送消息
@@ -91,7 +83,7 @@ class WechatyChannel(Channel, ABC):
                     await self._do_send_img(content, from_user_id)
                 else:
                     await self._do_send(content, from_user_id)
-            elif msg.is_self() and match_prefix:
+            elif msg.is_self():
                 # 自己给好友发送消息
                 if match_image_prefix:
                     await self._do_send_img(content, to_user_id)
@@ -146,21 +138,11 @@ class WechatyChannel(Channel, ABC):
                 return
 
             prefixs = config.get('prefix', [])
-            prefix, match_prefix = self.check_prefix(content, prefixs)
+            image_prefixs = get_conf('chat.image.prefix')
+            prefix, match_prefix, image_prefix, match_image_prefix, content = parse_prefix(content, prefixs, image_prefixs)
             if not match_prefix:
                 self.debug("not match prefix and return fast")
                 return
-            if len(prefix) > 0:
-                str_list = content.split(prefix, 1)
-                if len(str_list) == 2:
-                    content = str_list[1].strip()
-
-            image_prefixs = get_conf('chat.image.prefix')
-            image_prefix, match_image_prefix = self.check_prefix(content, image_prefixs)
-            if len(image_prefix) > 0:
-                str_list = content.split(image_prefix, 1)
-                if len(str_list) == 2:
-                    content = str_list[1].strip()
 
             if match_image_prefix:
                 await self._do_send_group_img(content, room_id)
@@ -174,7 +156,7 @@ class WechatyChannel(Channel, ABC):
             await contact.say(message)
 
     async def send_group(self, message: Union[str, Message, FileBox, Contact, UrlLink, MiniProgram], receiver):
-        self.debug('sendMsg={}, receiver={}'.format(message, receiver))
+        self.debug('sendGroupMsg={}, receiver={}'.format(message, receiver))
         if receiver:
             room = await bot.Room.find(receiver)
             await room.say(message)
@@ -188,6 +170,8 @@ class WechatyChannel(Channel, ABC):
             reply_text = super().build_reply_content(query, context)
             if reply_text:
                 await self.send(get_conf("chat.single.reply_prefix") + reply_text, reply_user_id)
+            else:
+                await self.send(get_conf("chat.single.reply_prefix") + "抱歉，我没听清您刚刚说啥，可以再说一次么~", reply_user_id)
         except Exception as e:
             self.error(e)
 
@@ -281,19 +265,3 @@ class WechatyChannel(Channel, ABC):
             await self.send_group(file_box, reply_room_id)
         except Exception as e:
             self.error(e)
-
-    def check_prefix(self, content, prefix_list):
-        if not prefix_list:
-            return "", False
-        for prefix in prefix_list:
-            if content.startswith(prefix):
-                return prefix, True
-        return "", False
-
-    def check_contain(self, content, keyword_list):
-        if not keyword_list:
-            return None
-        for ky in keyword_list:
-            if content.find(ky) != -1:
-                return True
-        return None
