@@ -13,7 +13,7 @@ def _get_logger():
     formatter = logging.Formatter('%(levelname)s %(asctime)s %(filename)s:%(lineno)d - %(message)s',
                                   datefmt='%Y-%m-%d %H:%M:%S')
     # 文件日志
-    file_handler = handlers.TimedRotatingFileHandler('logs/ChatGPT', when='d')
+    file_handler = handlers.TimedRotatingFileHandler('logs/ChatGPT', when='h')
     file_handler.setFormatter(formatter)
 
     # 控制台日志
