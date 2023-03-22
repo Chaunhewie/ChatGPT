@@ -1,8 +1,6 @@
 import os
 import pathlib
 
-from conf.config import get_conf
-
 
 class TmpDir(object):
     """A temporary directory that is deleted when the object is destroyed.
@@ -12,7 +10,7 @@ class TmpDir(object):
 
     def __init__(self):
         pathExists = os.path.exists(self.tmpFilePath)
-        if not pathExists and get_conf('speech_recognition') == True:
+        if not pathExists:
             os.makedirs(self.tmpFilePath)
 
     def path(self):

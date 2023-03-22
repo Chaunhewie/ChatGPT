@@ -66,7 +66,7 @@ class WechatChannel(Channel, ABC):
         self.debug('sendImage, receiver={}'.format(receiver))
 
     def handle_voice(self, msg):
-        if not get_conf('speech_recognition'):
+        if not get_conf('single_speech_recognition'):
             return
         self.debug("receive single voice msg: " + msg['FileName'])
         thread_pool.submit(self._do_handle_voice, msg)
@@ -95,7 +95,7 @@ class WechatChannel(Channel, ABC):
             thread_pool.submit(self._do_send_text, query, other_user_id)
 
     def handle_group_voice(self, msg):
-        if not get_conf('speech_recognition'):
+        if not get_conf('group_speech_recognition'):
             return
         self.debug("receive group voice msg: " + msg['FileName'])
         thread_pool.submit(self._do_handle_group_voice, msg)

@@ -67,8 +67,6 @@ class WechatyChannel(Channel, ABC):
 
         mention_content = await msg.mention_text()  # 返回过滤掉@name后的消息
 
-        match_prefix = False
-        match_image_prefix = False
         if msg.type() == MessageType.MESSAGE_TYPE_TEXT:
             prefixs = get_conf('chat.single.prefix')
             image_prefixs = get_conf('chat.image.prefix')
@@ -76,21 +74,50 @@ class WechatyChannel(Channel, ABC):
             if not match_prefix:
                 self.debug("not match prefix and return fast")
                 return
-        if room is None and msg.type() == MessageType.MESSAGE_TYPE_TEXT:
-            if not msg.is_self():
-                # 好友向自己发送消息
+            if room is None:
+                if not msg.is_self():
+                    # 好友向自己发送消息
+                    if match_image_prefix:
+                        await self._do_send_img(content, from_user_id)
+                    else:
+                        await self._do_send(content, from_user_id)
+                elif msg.is_self():
+                    # 自己给好友发送消息
+                    if match_image_prefix:
+                        await self._do_send_img(content, to_user_id)
+                    else:
+                        await self._do_send(content, to_user_id)
+            else:
+                # 群组&文本消息
+                room_id = room.room_id
+                room_name = await room.topic()
+                from_user_id = from_contact.contact_id
+                from_user_name = from_contact.name
+                is_at = await msg.mention_self()
+                content = mention_content
+                config = get_conf("chat.group.{}".format(room_name))
+                if config is None:
+                    self.debug("room={} not in group list and ignore".format(room_name))
+                    return
+                if config.get('must_at', False) and not is_at:
+                    self.debug("room={} must @ but check not @ and return fast".format(room_name))
+                    return
+
+                prefixs = config.get('prefix', [])
+                image_prefixs = get_conf('chat.image.prefix')
+                prefix, match_prefix, image_prefix, match_image_prefix, content = parse_prefix(content, prefixs, image_prefixs)
+                if not match_prefix:
+                    self.debug("not match prefix and return fast")
+                    return
+
                 if match_image_prefix:
-                    await self._do_send_img(content, from_user_id)
+                    await self._do_send_group_img(content, room_id)
                 else:
-                    await self._do_send(content, from_user_id)
-            elif msg.is_self():
-                # 自己给好友发送消息
-                if match_image_prefix:
-                    await self._do_send_img(content, to_user_id)
-                else:
-                    await self._do_send(content, to_user_id)
-        elif room is None and msg.type() == MessageType.MESSAGE_TYPE_AUDIO:
-            if not msg.is_self():  # 接收语音消息
+                    await self._do_send_group(content, room_id, room_name, from_user_id, from_user_name)
+        elif msg.type() == MessageType.MESSAGE_TYPE_AUDIO:
+            if room is None:
+                if not get_conf('single_speech_recognition'):
+                    return
                 # 下载语音文件
                 voice_file = await msg.to_file_box()
                 silk_file = TmpDir().path() + voice_file.name
@@ -112,42 +139,27 @@ class WechatyChannel(Channel, ABC):
                 else:
                     converter_state = "false"  # 转换wav失败
                 self.info("receive bot_voice converter: " + converter_state)
+
                 # 语音识别为文本
                 query = super().build_voice_to_text(wav_file)
-                if get_conf('voice_reply_voice'):
-                    await self._do_send_voice(query, from_user_id)
+
+                if not msg.is_self():
+                    if get_conf('voice_reply_voice'):
+                        await self._do_send_voice(query, from_user_id)
+                    else:
+                        await self._do_send(query, from_user_id)
                 else:
-                    await self._do_send(query, from_user_id)
+                    if get_conf('voice_reply_voice'):
+                        await self._do_send_voice(query, to_user_id)
+                    else:
+                        await self._do_send(query, to_user_id)
                 # 清除缓存文件
                 os.remove(wav_file)
                 os.remove(silk_file)
-        elif room and msg.type() == MessageType.MESSAGE_TYPE_TEXT:
-            # 群组&文本消息
-            room_id = room.room_id
-            room_name = await room.topic()
-            from_user_id = from_contact.contact_id
-            from_user_name = from_contact.name
-            is_at = await msg.mention_self()
-            content = mention_content
-            config = get_conf("chat.group.{}".format(room_name))
-            if config is None:
-                self.debug("room={} not in group list and ignore".format(room_name))
-                return
-            if config.get('must_at', False) and not is_at:
-                self.debug("room={} must @ but check not @ and return fast".format(room_name))
-                return
-
-            prefixs = config.get('prefix', [])
-            image_prefixs = get_conf('chat.image.prefix')
-            prefix, match_prefix, image_prefix, match_image_prefix, content = parse_prefix(content, prefixs, image_prefixs)
-            if not match_prefix:
-                self.debug("not match prefix and return fast")
-                return
-
-            if match_image_prefix:
-                await self._do_send_group_img(content, room_id)
             else:
-                await self._do_send_group(content, room_id, room_name, from_user_id, from_user_name)
+                if not get_conf('group_speech_recognition'):
+                    return
+                pass
 
     async def send(self, message: Union[str, Message, FileBox, Contact, UrlLink, MiniProgram], receiver):
         self.debug('sendMsg={}, receiver={}'.format(message, receiver))
