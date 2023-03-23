@@ -7,18 +7,21 @@ from logging import handlers
 log_path = pathlib.Path('./logs/')
 
 
-def _get_logger():
+def _get_logger(debug=False):
     if not os.path.exists(log_path):
         os.mkdir(log_path)
 
     log = logging.getLogger("logs")
-    log.setLevel(logging.DEBUG)
-    formatter = logging.Formatter('%(levelname)s %(asctime)s %(filename)s:%(lineno)d - %(message)s',
-                                  datefmt='%Y-%m-%d %H:%M:%S')
+    if debug:
+        log.setLevel(logging.DEBUG)
+    else:
+        log.setLevel(logging.INFO)
+
+    formatter = logging.Formatter('%(levelname)s %(asctime)s %(filename)s:%(lineno)d - %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+
     # 文件日志
     file_handler = handlers.TimedRotatingFileHandler(os.path.join(log_path, 'ChatGPT'), when='h')
     file_handler.setFormatter(formatter)
-
     # 控制台日志
     console_handle = logging.StreamHandler(sys.stdout)
     console_handle.setFormatter(formatter)
