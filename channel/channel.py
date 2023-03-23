@@ -32,19 +32,20 @@ class Channel(object):
 
     @staticmethod
     def build_reply_content(query, context=None):
-        if query == get_conf('clear_logs_commands', default=['#更新配置']):
+        logger.debug("[Channel] query={}".format(query))
+        if query in get_conf('update_config_commands', default=['#更新配置']):
             load_config()
             answer = '配置已更新'
             return answer
-        if query == get_conf('clear_tmp_commands', default=['#清除音频']):
+        if query in get_conf('clear_tmp_commands', default=['#清除音频']):
             clean_tmp()
             answer = '音频已清除'
             return answer
-        if query == get_conf('clear_logs_commands', default=['#清除日志']):
+        if query in get_conf('clear_logs_commands', default=['#清除日志']):
             clean_log(int(get_conf("clear_logs_remains_cnt", 3)))
             answer = '日志已清除'
             return answer
-        if query == get_conf('clear_all_memory_commands', default=['#清除所有']):
+        if query in get_conf('clear_all_memory_commands', default=['#清除所有']):
             clean_log(int(get_conf("clear_logs_remains_cnt", 3)))
             clean_tmp()
         return Bridge().fetch_reply_content(query, context)

@@ -17,7 +17,7 @@ else:
 class Session(object):
     @staticmethod
     def check_and_clear(query, session_id):
-        if query == get_conf('clear_all_memory_commands', default=['#清除所有']):
+        if query in get_conf('clear_all_memory_commands', default=['#清除所有']):
             Session.clear_all_session()
             answer = '所有记忆已清除'
             logger.info("[Session] clear all sessions success")
@@ -94,7 +94,7 @@ class Session(object):
 class UserSession(object):
     @staticmethod
     def check_and_clear(query, user_id):
-        if query == get_conf('clear_all_memory_commands', default=['#清除所有']):
+        if query in get_conf('clear_all_memory_commands', default=['#清除所有']):
             UserSession.clear_all_session()
             answer = '所有记忆已清除'
             return answer
