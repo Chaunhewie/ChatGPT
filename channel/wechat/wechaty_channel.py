@@ -19,7 +19,7 @@ from wechaty_puppet import MessageType, FileBox, ScanStatus  # type: ignore
 
 from channel.channel import Channel
 from common.const import ChannelTypeWXY
-from common.tmp_dir import TmpDir
+from common.tmp_dir import tmp_path
 from common.utils import parse_prefix
 from conf.config import get_conf
 
@@ -120,7 +120,7 @@ class WechatyChannel(Channel, ABC):
                     return
                 # 下载语音文件
                 voice_file = await msg.to_file_box()
-                silk_file = TmpDir().path() + voice_file.name
+                silk_file = tmp_path() + voice_file.name
                 await voice_file.to_file(silk_file)
                 self.info("receive bot_voice file: " + silk_file)
                 # 将文件转成wav格式音频

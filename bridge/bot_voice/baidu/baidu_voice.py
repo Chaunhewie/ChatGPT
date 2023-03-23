@@ -8,7 +8,7 @@ from aip import AipSpeech
 
 from bridge.bot_voice.voice import Voice
 from common.const import BotVoiceBaidu
-from common.tmp_dir import TmpDir
+from common.tmp_dir import tmp_path
 from conf.config import get_conf
 
 
@@ -29,7 +29,7 @@ class BaiduVoice(Voice):
         self.info('textToVoice text={}'.format(text))
         result = self.client.synthesis(text, 'zh', 1, {'spd': 5, 'pit': 5, 'vol': 5, 'per': 111})
         if not isinstance(result, dict):
-            fileName = TmpDir().path() + '语音回复_' + str(int(time.time())) + '.mp3'
+            fileName = tmp_path() + '语音回复_' + str(int(time.time())) + '.mp3'
             with open(fileName, 'wb') as f:
                 f.write(result)
             self.info('bot_voice file name={}'.format(fileName))

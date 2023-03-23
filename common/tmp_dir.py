@@ -1,17 +1,23 @@
 import os
 import pathlib
+import shutil
+
+from common.log import logger
+
+tmpFilePath = pathlib.Path('./tmp/')
+
+pathExists = os.path.exists(tmpFilePath)
+if not pathExists:
+    os.makedirs(tmpFilePath)
 
 
-class TmpDir(object):
-    """A temporary directory that is deleted when the object is destroyed.
-    """
+def tmp_path():
+    return str(tmpFilePath) + '/'
 
-    tmpFilePath = pathlib.Path('./tmp/')
 
-    def __init__(self):
-        pathExists = os.path.exists(self.tmpFilePath)
-        if not pathExists:
-            os.makedirs(self.tmpFilePath)
-
-    def path(self):
-        return str(self.tmpFilePath) + '/'
+def clean_tmp():
+    path = tmp_path()
+    if os.path.exists(path):
+        shutil.rmtree(path)
+        os.mkdir(path)
+        logger.info("[TMP] clean tmp files success")

@@ -13,7 +13,7 @@ from itchat.content import *
 
 from channel.channel import Channel
 from common.const import ChannelTypeWX
-from common.tmp_dir import TmpDir
+from common.tmp_dir import tmp_path
 from common.utils import parse_prefix
 from conf.config import get_conf
 
@@ -85,7 +85,7 @@ class WechatChannel(Channel, ABC):
             return ""
 
         # 下载音频并处理为文字
-        file_name = TmpDir().path() + msg['FileName']
+        file_name = tmp_path() + msg['FileName']
         msg.download(file_name)
         query = super().build_voice_to_text(file_name)
 
@@ -113,7 +113,7 @@ class WechatChannel(Channel, ABC):
             self.debug("group name={} not in group list and ignore".format(group_name))
             return
 
-        file_name = TmpDir().path() + msg['FileName']
+        file_name = tmp_path() + msg['FileName']
         msg.download(file_name)
         query = super().build_voice_to_text(file_name)
         if get_conf('voice_reply_voice'):

@@ -15,7 +15,7 @@ def load_config():
         raise Exception('配置文件不存在，请根据conf/config-template.json模板创建conf/config.json文件')
     with open(config_path, mode='r', encoding='utf-8') as f:
         config = json.load(f)
-    logger.info("[INIT] load config: {}".format(config))
+    logger.info("[CONF] load config: {}".format(config))
 
 
 def get_conf(path: str, default=None):

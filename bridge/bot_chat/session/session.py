@@ -2,6 +2,7 @@
 
 
 from common.expired_dict import ExpiredDict
+from common.log import logger
 from conf.config import get_conf
 
 expire = get_conf('bot.open_ai.expire_sec', default=0)
@@ -16,14 +17,15 @@ else:
 class Session(object):
     @staticmethod
     def check_and_clear(query, session_id):
-        if query == '#清除所有':
+        if query == get_conf('bot.clear_all_memory_commands', default=['#清除所有']):
             Session.clear_all_session()
-            answer = '所有人记忆已清除'
+            answer = '所有记忆已清除'
+            logger.info("[Session] clear all sessions success")
             return answer
-        clear_memory_commands = get_conf('bot.open_ai.clear_memory_commands', default=['#清除记忆'])
-        if query in clear_memory_commands:
+        if query in get_conf('bot.clear_memory_commands', default=['#清除记忆']):
             Session.clear_session(session_id)
             answer = '记忆已清除'
+            logger.info("[Session] clear session for {} success".format(session_id))
             return answer
         return ""
 
@@ -71,7 +73,6 @@ class Session(object):
     @staticmethod
     def discard_exceed_conversation(session, max_tokens, total_tokens):
         dec_tokens = int(total_tokens)
-        # logger.info("prompt tokens used={},max_tokens={}".format(used_tokens,max_tokens))
         while dec_tokens > max_tokens:
             # pop first conversation
             if len(session) > 3:
@@ -93,12 +94,11 @@ class Session(object):
 class UserSession(object):
     @staticmethod
     def check_and_clear(query, user_id):
-        if query == '#清除所有':
+        if query == get_conf('bot.clear_all_memory_commands', default=['#清除所有']):
             UserSession.clear_all_session()
-            answer = '所有人记忆已清除'
+            answer = '所有记忆已清除'
             return answer
-        clear_memory_commands = get_conf('bot.open_ai.clear_memory_commands', default=['#清除记忆'])
-        if query in clear_memory_commands:
+        if query in get_conf('bot.clear_memory_commands', default=['#清除记忆']):
             UserSession.clear_session(user_id)
             answer = '记忆已清除'
             return answer

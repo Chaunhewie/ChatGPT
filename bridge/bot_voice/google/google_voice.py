@@ -10,7 +10,7 @@ import speech_recognition
 
 from bridge.bot_voice.voice import Voice
 from common.const import BotVoiceGoogle
-from common.tmp_dir import TmpDir
+from common.tmp_dir import tmp_path
 
 
 class GoogleVoice(Voice):
@@ -43,7 +43,7 @@ class GoogleVoice(Voice):
             return "抱歉，无法连接到 Google 语音识别服务；{0}".format(e)
 
     def textToVoice(self, text):
-        textFile = TmpDir().path() + '语音回复_' + str(int(time.time())) + '.mp3'
+        textFile = tmp_path() + '语音回复_' + str(int(time.time())) + '.mp3'
         self.engine.save_to_file(text, textFile)
         self.engine.runAndWait()
         self.info('textToVoice text={} bot_voice file name={}'.format(text, textFile))

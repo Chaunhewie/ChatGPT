@@ -1,19 +1,22 @@
 import logging
 import os
+import pathlib
 import sys
 from logging import handlers
 
+log_path = pathlib.Path('./logs/')
+
 
 def _get_logger():
-    if not os.path.exists("logs"):
-        os.mkdir("logs")
+    if not os.path.exists(log_path):
+        os.mkdir(log_path)
 
-    log = logging.getLogger('logs')
+    log = logging.getLogger("logs")
     log.setLevel(logging.DEBUG)
     formatter = logging.Formatter('%(levelname)s %(asctime)s %(filename)s:%(lineno)d - %(message)s',
                                   datefmt='%Y-%m-%d %H:%M:%S')
     # 文件日志
-    file_handler = handlers.TimedRotatingFileHandler('logs/ChatGPT', when='h')
+    file_handler = handlers.TimedRotatingFileHandler(os.path.join(log_path, 'ChatGPT'), when='h')
     file_handler.setFormatter(formatter)
 
     # 控制台日志
@@ -22,8 +25,26 @@ def _get_logger():
 
     log.addHandler(file_handler)
     log.addHandler(console_handle)
-    return log
+    return log, file_handler
 
 
-# 日志句柄
-logger = _get_logger()
+# 日志句柄与日志文件句柄
+logger, log_file_handler = _get_logger()
+
+
+def clean_log(remains_cnt=3):
+    if remains_cnt < 1:
+        logger.info("[LOG] remain cnt {} is less than 1, remains all logs files".format(remains_cnt))
+        return
+    need_to_delete, remains = _get_files_to_clean(remains_cnt)
+    for f in need_to_delete:
+        os.remove(f)
+    logger.info("[LOG] clean {} logs files and remain {} log files".format(len(need_to_delete), len(remains)))
+
+
+def _get_files_to_clean(remains_cnt):
+    files = log_file_handler.getFilesToDelete()
+    if len(files) <= remains_cnt:
+        return [], files
+    delete_cnt = len(files) - remains_cnt
+    return files[:delete_cnt], files[delete_cnt:]
