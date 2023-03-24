@@ -4,6 +4,7 @@
 wechat channel
 """
 import io
+import os
 from abc import ABC
 from concurrent.futures import ThreadPoolExecutor
 
@@ -61,6 +62,10 @@ class WechatChannel(Channel, ABC):
         itchat.send(msg, toUserName=receiver)
         self.debug('sendMsg={}, receiver={}'.format(msg, receiver))
 
+    def send_file(self, file, receiver):
+        itchat.send_file(file, toUserName=receiver)
+        self.debug('sendFile={}, receiver={}'.format(file, receiver))
+
     def send_img(self, image_storage, receiver):
         itchat.send_image(image_storage, receiver)
         self.debug('sendImage, receiver={}'.format(receiver))
@@ -85,7 +90,7 @@ class WechatChannel(Channel, ABC):
             return ""
 
         # 下载音频并处理为文字
-        file_name = tmp_path() + msg['FileName']
+        file_name = os.path.join(tmp_path(), msg['FileName'])
         msg.download(file_name)
         query = super().build_voice_to_text(file_name)
 
@@ -113,7 +118,7 @@ class WechatChannel(Channel, ABC):
             self.debug("group name={} not in group list and ignore".format(group_name))
             return
 
-        file_name = tmp_path() + msg['FileName']
+        file_name = os.path.join(tmp_path(), msg['FileName'])
         msg.download(file_name)
         query = super().build_voice_to_text(file_name)
         if get_conf('voice_reply_voice'):
@@ -212,8 +217,15 @@ class WechatChannel(Channel, ABC):
             reply_text = super().build_reply_content(query, context)
             if not reply_text:
                 reply_text = "抱歉，我没听清您刚刚说啥，可以再说一次么~"
-            replyFile = super().build_text_to_voice(reply_text)
-            self.send(replyFile, reply_user_id)
+            wav_file = super().build_text_to_voice(reply_text)
+            # 将音频文件转换为amr格式
+            # audio = AudioSegment.from_file(wav_file, format="wav")
+            # arm_file = wav_file.replace(".wav", ".arm")
+            # audio.export(arm_file, format='amr')
+            self.send_file(wav_file, reply_user_id)
+            # 清除缓存文件
+            # os.remove(wav_file)
+            # os.remove(arm_file)
         except Exception as e:
             self.error(e)
 

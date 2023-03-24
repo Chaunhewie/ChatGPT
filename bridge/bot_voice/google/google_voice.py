@@ -1,7 +1,9 @@
+# encoding:utf-8
 """
 google bot_voice service
 """
 
+import os
 import subprocess
 import time
 
@@ -21,12 +23,14 @@ class GoogleVoice(Voice):
         super().__init__(BotVoiceGoogle)
         self.name = BotVoiceGoogle
         # 语速
-        self.engine.setProperty('rate', 125)
+        self.engine.setProperty('rate', 200)
         # 音量
         self.engine.setProperty('volume', 1.0)
-        # 0为男声，1为女声
-        voices = self.engine.getProperty('voices')
-        self.engine.setProperty('bot_voice', voices[1].id)
+        self.engine.runAndWait()
+        # 音色
+        # voices = self.engine.getProperty('voices')
+        # self.engine.setProperty('voice', voices[1].id)  # 0为男声，1为女声
+        # self.engine.setProperty('voiceAge', 'Teen')  # 'Child'、'Teen'、'Adult' 和 'Senior'
 
     def voiceToText(self, voice_file):
         new_file = voice_file.replace('.mp3', '.wav')
@@ -43,8 +47,13 @@ class GoogleVoice(Voice):
             return "抱歉，无法连接到 Google 语音识别服务；{0}".format(e)
 
     def textToVoice(self, text):
-        textFile = tmp_path() + '语音回复_' + str(int(time.time())) + '.mp3'
+        self.debug('textToVoice get text={} and waiting to build voice'.format(text))
+        textFile = os.path.join(tmp_path(), '语音回复_' + str(int(time.time_ns())) + '.wav')
         self.engine.save_to_file(text, textFile)
+        # self.engine.say(text)
         self.engine.runAndWait()
         self.info('textToVoice text={} bot_voice file name={}'.format(text, textFile))
         return textFile
+
+# print(GoogleVoice().textToVoice("你好！有什么问题需要我来回答或帮助解决吗？"))
+# print(GoogleVoice().textToVoice("hello？"))

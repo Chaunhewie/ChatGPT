@@ -120,7 +120,7 @@ class WechatyChannel(Channel, ABC):
                     return
                 # 下载语音文件
                 voice_file = await msg.to_file_box()
-                silk_file = tmp_path() + voice_file.name
+                silk_file = os.path.join(tmp_path(), voice_file.name)
                 await voice_file.to_file(silk_file)
                 self.info("receive bot_voice file: " + silk_file)
                 # 将文件转成wav格式音频
@@ -154,8 +154,8 @@ class WechatyChannel(Channel, ABC):
                     else:
                         await self._do_send(query, to_user_id)
                 # 清除缓存文件
-                os.remove(wav_file)
-                os.remove(silk_file)
+                # os.remove(wav_file)
+                # os.remove(silk_file)
             else:
                 if not get_conf('group_speech_recognition'):
                     return
@@ -196,16 +196,12 @@ class WechatyChannel(Channel, ABC):
             reply_text = super().build_reply_content(query, context)
             if reply_text:
                 # 转换 mp3 文件为 silk 格式
-                mp3_file = super().build_text_to_voice(reply_text)
-                silk_file = mp3_file.replace(".mp3", ".silk")
-                # Load the MP3 file
-                audio = AudioSegment.from_file(mp3_file, format="mp3")
-                # Convert to WAV format
-                audio = audio.set_frame_rate(24000).set_channels(1)
-                wav_data = audio.raw_data
-                sample_width = audio.sample_width
+                wav_file = super().build_text_to_voice(reply_text)
+                silk_file = wav_file.replace(".wav", ".silk")
+                # Load the WAV file
+                audio = AudioSegment.from_file(wav_file, format="wav")
                 # Encode to SILK format
-                silk_data = pysilk.encode(wav_data, 24000)
+                silk_data = pysilk.encode(audio, 24000)
                 # Save the silk file
                 with open(silk_file, "wb") as f:
                     f.write(silk_data)
@@ -214,8 +210,8 @@ class WechatyChannel(Channel, ABC):
                 file_box = FileBox.from_file(silk_file, name=str(t) + '.silk')
                 await self.send(file_box, reply_user_id)
                 # 清除缓存文件
-                os.remove(mp3_file)
-                os.remove(silk_file)
+                # os.remove(wav_file)
+                # os.remove(silk_file)
         except Exception as e:
             self.error(e)
 

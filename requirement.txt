@@ -7,3 +7,4 @@ SpeechRecognition
 pydub
 pysilk
 pyttsx3
+pydub

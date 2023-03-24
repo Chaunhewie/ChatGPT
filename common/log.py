@@ -32,7 +32,7 @@ def _get_logger(debug=False):
 
 
 # 日志句柄与日志文件句柄
-logger, log_file_handler = _get_logger()
+logger, log_file_handler = _get_logger(True)
 
 
 def clean_log(remains_cnt=3):

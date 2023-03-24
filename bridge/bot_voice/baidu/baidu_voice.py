@@ -1,7 +1,9 @@
+# encoding:utf-8
 """
 baidu bot_voice service
 """
 
+import os
 import time
 
 from aip import AipSpeech
@@ -29,7 +31,7 @@ class BaiduVoice(Voice):
         self.info('textToVoice text={}'.format(text))
         result = self.client.synthesis(text, 'zh', 1, {'spd': 5, 'pit': 5, 'vol': 5, 'per': 111})
         if not isinstance(result, dict):
-            fileName = tmp_path() + '语音回复_' + str(int(time.time())) + '.mp3'
+            fileName = os.path.join(tmp_path() + '语音回复_', str(int(time.time_ns())) + '.mp3')
             with open(fileName, 'wb') as f:
                 f.write(result)
             self.info('bot_voice file name={}'.format(fileName))

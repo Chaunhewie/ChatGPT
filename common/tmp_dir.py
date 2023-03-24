@@ -4,7 +4,7 @@ import shutil
 
 from common.log import logger
 
-tmpFilePath = pathlib.Path('./tmp/')
+tmpFilePath = pathlib.Path('./tmp')
 
 pathExists = os.path.exists(tmpFilePath)
 if not pathExists:
@@ -12,7 +12,7 @@ if not pathExists:
 
 
 def tmp_path():
-    return str(tmpFilePath) + '/'
+    return tmpFilePath
 
 
 def clean_tmp():

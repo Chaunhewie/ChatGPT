@@ -45,10 +45,18 @@ class Session(object):
         """
         session = all_sessions.get(session_id, [])
         if len(session) == 0:
-            system_prompt = get_conf("character_desc")
-            system_item = {'role': 'system', 'content': system_prompt}
-            session.append(system_item)
-            all_sessions[session_id] = session
+            some_prompt = get_conf("some_prompt")
+            if query in some_prompt:
+                for prompt in some_prompt[query]:
+                    system_item = {'role': 'system', 'content': prompt}
+                    session.append(system_item)
+                all_sessions[session_id] = session
+                return session
+            else:
+                system_prompt = get_conf("character_desc")
+                system_item = {'role': 'system', 'content': system_prompt}
+                session.append(system_item)
+                all_sessions[session_id] = session
         user_item = {'role': 'user', 'content': query}
         session.append(user_item)
         return session

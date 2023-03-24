@@ -33,6 +33,10 @@ class Channel(object):
     @staticmethod
     def build_reply_content(query, context=None):
         logger.debug("[Channel] query={}".format(query))
+        if query == "#prompt":
+            some_prompt = get_conf('some_prompt', default=["目前没有相关提示项"])
+            answer = "\n请先清除上下文记忆后直接输入对应角色来启用此功能，当前支持设定的角色如下：\n" + ",".join(some_prompt.keys())
+            return answer
         if query in get_conf('update_config_commands', default=['#更新配置']):
             load_config()
             answer = '配置已更新'
