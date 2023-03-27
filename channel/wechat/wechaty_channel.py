@@ -68,9 +68,12 @@ class WechatyChannel(Channel, ABC):
         mention_content = await msg.mention_text()  # 返回过滤掉@name后的消息
 
         if msg.type() == MessageType.MESSAGE_TYPE_TEXT:
-            prefixs = get_conf('chat.single.prefix')
-            image_prefixs = get_conf('chat.image.prefix')
-            prefix, match_prefix, image_prefix, match_image_prefix, content = parse_prefix(content, prefixs, image_prefixs)
+            prefixs = get_conf('chat.single.prefix', [])
+            except_prefixs = get_conf('chat.single.except_prefix', [])
+            image_prefixs = get_conf('chat.image.prefix', [])
+            prefix, match_prefix, except_prefix, match_except_prefix, image_prefix, match_image_prefix, content = parse_prefix(content, prefixs, except_prefixs, image_prefixs)
+            self.debug("prefix={}, match_prefix={}, except_prefix={}, match_except_prefix={}, image_prefix={}, \
+match_image_prefix={}".format(prefix, match_prefix, except_prefix, match_except_prefix, image_prefix, match_image_prefix))
             if not match_prefix:
                 self.debug("not match prefix and return fast")
                 return
@@ -95,7 +98,7 @@ class WechatyChannel(Channel, ABC):
                 from_user_name = from_contact.name
                 is_at = await msg.mention_self()
                 content = mention_content
-                config = get_conf("chat.group.{}".format(room_name))
+                config = get_conf("chat.group.{}".format(room_name), default=get_conf("chat.group.*", default=None))
                 if config is None:
                     self.debug("room={} not in group list and ignore".format(room_name))
                     return
@@ -104,8 +107,11 @@ class WechatyChannel(Channel, ABC):
                     return
 
                 prefixs = config.get('prefix', [])
+                except_prefixs = config.get('except_prefix', [])
                 image_prefixs = get_conf('chat.image.prefix')
-                prefix, match_prefix, image_prefix, match_image_prefix, content = parse_prefix(content, prefixs, image_prefixs)
+                prefix, match_prefix, except_prefix, match_except_prefix, image_prefix, match_image_prefix, content = parse_prefix(content, prefixs, except_prefixs, image_prefixs)
+                self.debug("prefix={}, match_prefix={}, except_prefix={}, match_except_prefix={}, image_prefix={}, \
+match_image_prefix={}".format(prefix, match_prefix, except_prefix, match_except_prefix, image_prefix, match_image_prefix))
                 if not match_prefix:
                     self.debug("not match prefix and return fast")
                     return
@@ -243,7 +249,7 @@ class WechatyChannel(Channel, ABC):
         if not query:
             return
         context = dict()
-        config = get_conf("chat.group.{}".format(group_name))
+        config = get_conf("chat.group.{}".format(group_name), default=get_conf("chat.group.*", default=None))
         if config is None:
             return
 

@@ -1,7 +1,9 @@
-def parse_prefix(content, prefixs, image_prefixs):
+def parse_prefix(content, prefixs, except_prefixs, image_prefixs):
     prefix, match_prefix = _check_prefix(content, prefixs)
-    if not match_prefix:
-        return "", False, "", False, content
+    except_prefix, match_ex_prefix = _check_prefix(content, except_prefixs)
+    if not match_prefix or match_ex_prefix:
+        match_prefix = False
+        return prefix, match_prefix, except_prefix, match_ex_prefix, "", False, content
     if len(prefix) > 0:
         str_list = content.split(prefix, 1)
         if len(str_list) == 2:
@@ -12,11 +14,11 @@ def parse_prefix(content, prefixs, image_prefixs):
         str_list = content.split(image_prefix, 1)
         if len(str_list) == 2:
             content = str_list[1].strip()
-    return prefix, match_prefix, image_prefix, match_image_prefix, content
+    return prefix, match_ex_prefix, except_prefix, match_ex_prefix, image_prefix, match_image_prefix, content
 
 
 def _check_prefix(content, prefix_list):
-    if not prefix_list:
+    if prefix_list is None or len(prefix_list) <= 0:
         return "", False
     for prefix in prefix_list:
         if content.startswith(prefix):

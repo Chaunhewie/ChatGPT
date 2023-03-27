@@ -113,7 +113,7 @@ class WechatChannel(Channel, ABC):
             self.debug("blank group name and return fast")
             return ""
 
-        config = get_conf("chat.group.{}".format(group_name), default=None)
+        config = get_conf("chat.group.{}".format(group_name), default=get_conf("chat.group.*", default=None))
         if config is None:
             self.debug("group name={} not in group list and ignore".format(group_name))
             return
@@ -147,11 +147,12 @@ class WechatChannel(Channel, ABC):
             self.debug("blank other user id and return fast")
             return ""
 
-        prefixs = get_conf('chat.single.prefix')
-        image_prefixs = get_conf('chat.image.prefix')
-
-        prefix, match_prefix, image_prefix, match_image_prefix, content = parse_prefix(content, prefixs, image_prefixs)
-        self.debug("prefix={}, match_prefix={}, image_prefix={}, match_image_prefix={}".format(prefix, match_prefix, image_prefix, match_image_prefix))
+        prefixs = get_conf('chat.single.prefix', default=[])
+        except_prefixs = get_conf('chat.single.except_prefix', default=[])
+        image_prefixs = get_conf('chat.image.prefix', default=[])
+        prefix, match_prefix, except_prefix, match_except_prefix, image_prefix, match_image_prefix, content = parse_prefix(content, prefixs, except_prefixs, image_prefixs)
+        self.debug("prefix={}, match_prefix={}, except_prefix={}, match_except_prefix={}, image_prefix={}, \
+match_image_prefix={}".format(prefix, match_prefix, except_prefix, match_except_prefix, image_prefix, match_image_prefix))
 
         if not match_prefix:
             self.debug("not match prefix and return fast")
@@ -187,18 +188,21 @@ class WechatChannel(Channel, ABC):
             self.debug("blank group name and return fast")
             return ""
 
-        config = get_conf("chat.group.{}".format(group_name), default=None)
+        config = get_conf("chat.group.{}".format(group_name), default=get_conf("chat.group.*", default=None))
         if config is None:
             self.debug("group {} not in group list and ignore".format(group_name))
             return
         if config.get('must_at', True) and not is_at:
             self.debug("group {} config must @ but check not @ and return fast".format(group_name))
             return
+        self.debug("group config {}".format(config))
 
         prefixs = config.get('prefix', [])
-        image_prefixs = get_conf('chat.image.prefix')
-        prefix, match_prefix, image_prefix, match_image_prefix, content = parse_prefix(content, prefixs, image_prefixs)
-        self.debug("prefix={}, match_prefix={}, image_prefix={}, match_image_prefix={}".format(prefix, match_prefix, image_prefix, match_image_prefix))
+        except_prefixs = config.get('except_prefix', [])
+        image_prefixs = get_conf('chat.image.prefix', [])
+        prefix, match_prefix, except_prefix, match_except_prefix, image_prefix, match_image_prefix, content = parse_prefix(content, prefixs, except_prefixs, image_prefixs)
+        self.debug("prefix={}, match_prefix={}, except_prefix={}, match_except_prefix={}, image_prefix={}, \
+match_image_prefix={}".format(prefix, match_prefix, except_prefix, match_except_prefix, image_prefix, match_image_prefix))
         if not match_prefix:
             self.debug("not match prefix={} and return fast".format(prefixs))
             return
@@ -271,7 +275,7 @@ class WechatChannel(Channel, ABC):
                 return
             group_name = msg['User']['NickName']
             group_id = msg['User']['UserName']
-            config = get_conf("chat.group.{}".format(group_name), default=None)
+            config = get_conf("chat.group.{}".format(group_name), default=get_conf("chat.group.*", default=None))
             if config is None:
                 self.debug("group {} not in group list and ignore".format(group_name))
                 return
