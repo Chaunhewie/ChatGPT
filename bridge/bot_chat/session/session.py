@@ -30,7 +30,7 @@ class Session(object):
         return ""
 
     @staticmethod
-    def build_session_query(query, session_id):
+    def build_session_query(query_type, query, session_id):
         """
         build query with conversation history
         e.g.  [
@@ -39,6 +39,7 @@ class Session(object):
             {"role": "assistant", "content": "The Los Angeles Dodgers won the World Series in 2020."},
             {"role": "user", "content": "Where was it played?"}
         ]
+        :param query_type: query type (TEXT, CODE, IMAGE_CREATE, etc)
         :param query: query content
         :param session_id: session id
         :return: query content with conversation
@@ -51,18 +52,27 @@ class Session(object):
                     system_item = {'role': 'system', 'content': prompt}
                     session.append(system_item)
                 all_sessions[session_id] = session
-                return session
+                return Session._filtered_session(session)
             else:
                 system_prompt = get_conf("character_desc")
                 system_item = {'role': 'system', 'content': system_prompt}
                 session.append(system_item)
                 all_sessions[session_id] = session
-        user_item = {'role': 'user', 'content': query}
+        user_item = {'role': 'user', 'type': query_type, 'content': query}
         session.append(user_item)
-        return session
+        return Session._filtered_session(session, query_type)
 
     @staticmethod
-    def save_session(answer, session_id, total_tokens):
+    def _filtered_session(session, query_type):
+        _session = []
+        for s in session:
+            if s.get('type', query_type) == query_type:
+                _s = {'role': s['role'], 'content': s['content']}
+                _session.append(_s)
+        return _session
+
+    @staticmethod
+    def save_session(query_type, answer, session_id, total_tokens):
         max_tokens = get_conf("bot.open_ai.max_tokens")
         if not max_tokens:
             # default 1000
@@ -72,7 +82,7 @@ class Session(object):
         session = all_sessions.get(session_id)
         if session:
             # append conversation
-            gpt_item = {'role': 'assistant', 'content': answer}
+            gpt_item = {'role': 'assistant', 'type': query_type, 'content': answer}
             session.append(gpt_item)
 
         # discard exceed limit conversation
@@ -113,12 +123,13 @@ class UserSession(object):
         return ""
 
     @staticmethod
-    def build_session_query(query, user_id):
+    def build_session_query(query_type, query, user_id):
         """
         build query with conversation history
         e.g.  Q: xxx
               A: xxx
               Q: xxx
+        :param query_type: query type (TEXT, CODE, IMAGE_CREATE, etc)
         :param query: query content
         :param user_id: from user id
         :return: query content with conversaction
@@ -136,7 +147,7 @@ class UserSession(object):
             return prompt + "Q: " + query + "\nA: "
 
     @staticmethod
-    def save_session(query, answer, user_id):
+    def save_session(query_type, query, answer, user_id):
         max_tokens = get_conf("bot.open_ai.max_tokens")
         if not max_tokens:
             # default 1000
@@ -155,7 +166,7 @@ class UserSession(object):
             user_session[user_id] = queue
 
         # discard exceed limit conversation
-        Session.discard_exceed_conversation(user_session[user_id], max_tokens)
+        UserSession.discard_exceed_conversation(user_session[user_id], max_tokens)
 
     @staticmethod
     def discard_exceed_conversation(session, max_tokens):

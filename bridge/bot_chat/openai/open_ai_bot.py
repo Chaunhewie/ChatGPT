@@ -6,7 +6,7 @@ import openai
 
 from bridge.bot_chat.chat import Chat
 from bridge.bot_chat.session.session import UserSession
-from common.const import BotOpenAI
+from common.const import *
 from conf.config import get_conf
 
 
@@ -25,21 +25,22 @@ class OpenAIBot(Chat):
 
     def reply(self, query, context=None):
         # acquire reply content
-        if not context or not context.get('type') or context.get('type') == 'TEXT':
+        if not context or not context.get('type') or context.get('type') == ContextTypeText:
             self.info("query={}".format(query))
+            query_type = ContextTypeText
 
             from_user_id = context.get('from_user_id') or context.get('session_id')
             answer = UserSession.check_and_clear(query, from_user_id)
             if len(answer) > 0:
                 self.info("answer={}".format(answer))
                 return answer
-            new_query = UserSession.build_session_query(query, from_user_id)
+            new_query = UserSession.build_session_query(query_type, query, from_user_id)
             self.debug("session query={}".format(new_query))
 
             reply_content = self.reply_text(new_query, from_user_id, 0)
             self.debug("user={}, reply_cont={}".format(from_user_id, reply_content))
             if reply_content and query:
-                UserSession.save_session(query, reply_content, from_user_id)
+                UserSession.save_session(query_type, query, reply_content, from_user_id)
 
             self.info("answer={}".format(reply_content))
             return reply_content

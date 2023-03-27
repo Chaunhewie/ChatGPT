@@ -6,7 +6,7 @@ import openai
 
 from bridge.bot_chat.chat import Chat
 from bridge.bot_chat.session.session import Session
-from common.const import BotChatGPT
+from common.const import *
 from conf.config import get_conf
 
 
@@ -25,27 +25,32 @@ class ChatGPTBot(Chat):
 
     def reply(self, query, context=None):
         # acquire reply content
-        if not context or not context.get('type') or context.get('type') == 'TEXT':
+        if not context or not context.get('type') or context.get('type') == ContextTypeText:
             self.info("query={}".format(query))
+            query_type = ContextTypeText
 
             session_id = context.get('session_id') or context.get('from_user_id')
             answer = Session.check_and_clear(query, session_id)
             if len(answer) > 0:
                 self.info("answer={}".format(answer))
                 return answer
-            session = Session.build_session_query(query, session_id)
+            session = Session.build_session_query(query_type, query, session_id)
             self.debug("session query={}".format(session))
 
             reply_content = self.reply_text(session, session_id, 0)
             self.debug("session_id={}, reply_cont={}".format(session_id, reply_content["content"]))
             if reply_content["completion_tokens"] > 0:
-                Session.save_session(reply_content["content"], session_id, reply_content["total_tokens"])
+                Session.save_session(query_type, reply_content["content"], session_id, reply_content["total_tokens"])
             self.info("answer={}".format(reply_content["content"]))
             return reply_content["content"]
 
-        elif context.get('type', None) == 'IMAGE_CREATE':
+        elif context.get('type') == ContextTypeImageCreate:
             self.info("image_query={}".format(query))
             return self.create_img(query, 0)
+
+        elif context.get('type') == ContextTypeCode:
+            self.info("code_query={}".format(query))
+            return ""  # todo
 
     def reply_text(self, session, session_id, retry_count=0) -> dict:
         """

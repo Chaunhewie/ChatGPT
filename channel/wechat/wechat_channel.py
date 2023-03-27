@@ -13,7 +13,7 @@ import requests
 from itchat.content import *
 
 from channel.channel import Channel
-from common.const import ChannelTypeWX
+from common.const import *
 from common.tmp_dir import tmp_path
 from common.utils import parse_prefix
 from conf.config import get_conf
@@ -217,6 +217,7 @@ match_image_prefix={}".format(prefix, match_prefix, except_prefix, match_except_
             if not query:
                 return
             context = dict()
+            context['type'] = ContextTypeText
             context['session_id'] = reply_user_id
             reply_text = super().build_reply_content(query, context)
             if not reply_text:
@@ -238,6 +239,7 @@ match_image_prefix={}".format(prefix, match_prefix, except_prefix, match_except_
             if not query:
                 return
             context = dict()
+            context['type'] = ContextTypeText
             context['session_id'] = reply_user_id
             reply_text = super().build_reply_content(query, context)
             if not reply_text:
@@ -251,7 +253,8 @@ match_image_prefix={}".format(prefix, match_prefix, except_prefix, match_except_
             if not query:
                 return
             context = dict()
-            context['type'] = 'IMAGE_CREATE'
+            context['type'] = ContextTypeImageCreate
+            context['session_id'] = reply_user_id
             img_url = super().build_reply_content(query, context)
             if not img_url:
                 self.debug("not get img response url and return")
@@ -281,6 +284,7 @@ match_image_prefix={}".format(prefix, match_prefix, except_prefix, match_except_
                 return
 
             context = dict()
+            context['type'] = ContextTypeText
             context['session_id'] = group_id + "-" + msg['ActualUserName']
             if config.get('all_in_one_session', True):
                 context['session_id'] = group_id

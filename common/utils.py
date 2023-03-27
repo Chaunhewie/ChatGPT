@@ -14,7 +14,7 @@ def parse_prefix(content, prefixs, except_prefixs, image_prefixs):
         str_list = content.split(image_prefix, 1)
         if len(str_list) == 2:
             content = str_list[1].strip()
-    return prefix, match_ex_prefix, except_prefix, match_ex_prefix, image_prefix, match_image_prefix, content
+    return prefix, match_prefix, except_prefix, match_ex_prefix, image_prefix, match_image_prefix, content
 
 
 def _check_prefix(content, prefix_list):
