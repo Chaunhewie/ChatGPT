@@ -127,8 +127,8 @@ class WechatChannel(Channel, ABC):
             thread_pool.submit(self._do_send_group, query, msg)
 
     def handle_single_msg(self, msg):
-        content = msg['Text']
-        self.debug("receive single text msg: " + content)
+        content = msg['Content']
+        self.debug("receive single text content: {}".format(content))
         self._do_handle_single_msg(msg, content)
 
     def _do_handle_single_msg(self, msg, content):
@@ -138,10 +138,17 @@ class WechatChannel(Channel, ABC):
         from_user_id = msg['FromUserName']  # 发送人id
         to_user_id = msg['ToUserName']  # 接收人id
         other_user_id = msg['User']['UserName']  # 聊天对方的id
+        other_user_nick = msg['User']['NickName']  # 聊天对方名称
+        other_user_remark = msg['User']['RemarkName']  # 聊天对方备注
+        other_user = other_user_id
+        if len(other_user_nick) > 0:
+            other_user = other_user_nick
+        if len(other_user_remark) > 0:
+            other_user = other_user_remark
 
         # from_user_id == other_user_id 好友向自己发送消息
         # to_user_id == other_user_id 自己给好友发送消息
-        self.debug("from user {} -> to user {}, other user is {}".format(from_user_id, to_user_id, other_user_id))
+        self.debug("other user is {}, from user {} -> to user {}".format(other_user, from_user_id, to_user_id))
 
         if len(other_user_id) <= 0:
             self.debug("blank other user id and return fast")
@@ -173,7 +180,7 @@ match_image_prefix={}".format(prefix, match_prefix, except_prefix, match_except_
         # elif len(content_list) == 2:
         #     content = content_list[1]
 
-        self.debug("receive group text msg: " + content)
+        self.debug("receive group text content: {}".format(content))
         self._do_handle_group_msg(msg, content)
 
     def _do_handle_group_msg(self, msg, content):
@@ -182,8 +189,9 @@ match_image_prefix={}".format(prefix, match_prefix, except_prefix, match_except_
             return ""
         group_name = msg['User'].get('NickName', "")
         group_id = msg['User'].get('UserName', "")
+        user_nick = msg.get('ActualNickName', "")
         is_at = msg['IsAt']
-        self.debug("group_name={}, group_id={}, is_at={}".format(group_name, group_id, is_at))
+        self.debug("group_name={}, user_nick={}, is_at={}, group_id={}, ".format(group_name, user_nick, is_at, group_id))
         if len(group_name) <= 0:
             self.debug("blank group name and return fast")
             return ""
