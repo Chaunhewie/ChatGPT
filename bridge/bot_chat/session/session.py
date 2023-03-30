@@ -52,7 +52,7 @@ class Session(object):
                     system_item = {'role': 'system', 'content': prompt}
                     session.append(system_item)
                 all_sessions[session_id] = session
-                return Session._filtered_session(session)
+                return Session._filtered_session(session, query_type)
             else:
                 system_prompt = get_conf("character_desc")
                 system_item = {'role': 'system', 'content': system_prompt}
