@@ -79,14 +79,21 @@ class WechatChannel(Channel, ABC):
     def _do_handle_voice(self, msg):
         from_user_id = msg['FromUserName']  # 发送人id
         to_user_id = msg['ToUserName']  # 接收人id
-        other_user_id = msg['User']['UserName']  # 聊天对方的id
+        other_user_id = msg['User'].get('UserName', "")  # 聊天对方的id
+        other_user_nick = msg['User'].get('NickName', "")  # 聊天对方名称
+        other_user_remark = msg['User'].get('RemarkName', "")  # 聊天对方备注
+        other_user = other_user_id if len(other_user_id) > 0 else from_user_id
+        if len(other_user_nick) > 0:
+            other_user = other_user_nick
+        if len(other_user_remark) > 0:
+            other_user = other_user_remark
 
         # from_user_id == other_user_id 好友向自己发送消息
         # to_user_id == other_user_id 自己给好友发送消息
-        self.debug("from user {} -> to user {}, other user is {}".format(from_user_id, to_user_id, other_user_id))
+        self.info("[_do_handle_voice] other user is {}, from user {} -> to user {}".format(other_user, from_user_id, to_user_id))
 
         if len(other_user_id) <= 0:
-            self.debug("blank other user id and return fast")
+            self.info("[_do_handle_voice] blank other user id and return fast")
             return ""
 
         # 下载音频并处理为文字
@@ -108,14 +115,14 @@ class WechatChannel(Channel, ABC):
     def _do_handle_group_voice(self, msg):
         group_name = msg['User'].get('NickName', "")
         group_id = msg['User'].get('UserName', "")
-        self.debug("group_name={}, group_id={}".format(group_name, group_id))
+        self.info("[_do_handle_group_voice] group_name={}, group_id={}".format(group_name, group_id))
         if len(group_name) <= 0:
-            self.debug("blank group name and return fast")
+            self.info("[_do_handle_group_voice] blank group name and return fast")
             return ""
 
         config = get_conf("chat.group.{}".format(group_name), default=get_conf("chat.group.*", default=None))
         if config is None:
-            self.debug("group name={} not in group list and ignore".format(group_name))
+            self.info("[_do_handle_group_voice] group name={} not in group list and ignore".format(group_name))
             return
 
         file_name = os.path.join(tmp_path(), msg['FileName'])
@@ -148,21 +155,21 @@ class WechatChannel(Channel, ABC):
 
         # from_user_id == other_user_id 好友向自己发送消息
         # to_user_id == other_user_id 自己给好友发送消息
-        self.debug("other user is {}, from user {} -> to user {}".format(other_user, from_user_id, to_user_id))
+        self.info("[_do_handle_single_msg] other user is {}, from user {} -> to user {}".format(other_user, from_user_id, to_user_id))
 
         if len(other_user_id) <= 0:
-            self.debug("blank other user id and return fast")
+            self.info("[_do_handle_single_msg] blank other user id and return fast")
             return ""
 
         prefixs = get_conf('chat.single.prefix', default=[])
         except_prefixs = get_conf('chat.single.except_prefix', default=[])
         image_prefixs = get_conf('chat.image.prefix', default=[])
         prefix, match_prefix, except_prefix, match_except_prefix, image_prefix, match_image_prefix, content = parse_prefix(content, prefixs, except_prefixs, image_prefixs)
-        self.debug("prefix={}, match_prefix={}, except_prefix={}, match_except_prefix={}, image_prefix={}, \
+        self.debug("[_do_handle_single_msg] prefix={}, match_prefix={}, except_prefix={}, match_except_prefix={}, image_prefix={}, \
 match_image_prefix={}".format(prefix, match_prefix, except_prefix, match_except_prefix, image_prefix, match_image_prefix))
 
         if not match_prefix:
-            self.debug("not match prefix and return fast")
+            self.info("[_do_handle_single_msg] not match prefix and return fast")
             return
 
         if match_image_prefix:
@@ -191,28 +198,28 @@ match_image_prefix={}".format(prefix, match_prefix, except_prefix, match_except_
         group_id = msg['User'].get('UserName', "")
         user_nick = msg.get('ActualNickName', "")
         is_at = msg['IsAt']
-        self.debug("group_name={}, user_nick={}, is_at={}, group_id={}, ".format(group_name, user_nick, is_at, group_id))
+        self.info("[_do_handle_group_msg] group_name={}, user_nick={}, is_at={}, group_id={}, ".format(group_name, user_nick, is_at, group_id))
         if len(group_name) <= 0:
-            self.debug("blank group name and return fast")
+            self.info("[_do_handle_group_msg] blank group name and return fast")
             return ""
 
         config = get_conf("chat.group.{}".format(group_name), default=get_conf("chat.group.*", default=None))
         if config is None:
-            self.debug("group {} not in group list and ignore".format(group_name))
+            self.info("[_do_handle_group_msg] group {} not in group list and ignore".format(group_name))
             return
         if config.get('must_at', True) and not is_at:
-            self.debug("group {} config must @ but check not @ and return fast".format(group_name))
+            self.info("[_do_handle_group_msg] group {} config must @ but check not @ and return fast".format(group_name))
             return
-        self.debug("group config {}".format(config))
+        self.info("[_do_handle_group_msg] group config {}".format(config))
 
         prefixs = config.get('prefix', [])
         except_prefixs = config.get('except_prefix', [])
         image_prefixs = get_conf('chat.image.prefix', [])
         prefix, match_prefix, except_prefix, match_except_prefix, image_prefix, match_image_prefix, content = parse_prefix(content, prefixs, except_prefixs, image_prefixs)
-        self.debug("prefix={}, match_prefix={}, except_prefix={}, match_except_prefix={}, image_prefix={}, \
+        self.debug("[_do_handle_group_msg] prefix={}, match_prefix={}, except_prefix={}, match_except_prefix={}, image_prefix={}, \
 match_image_prefix={}".format(prefix, match_prefix, except_prefix, match_except_prefix, image_prefix, match_image_prefix))
         if not match_prefix:
-            self.debug("not match prefix={} and return fast".format(prefixs))
+            self.info("[_do_handle_group_msg] not match prefix={} and return fast".format(prefixs))
             return
 
         if match_image_prefix:
