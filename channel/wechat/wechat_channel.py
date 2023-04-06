@@ -137,10 +137,10 @@ class WechatChannel(Channel, ABC):
             return
         from_user_id = msg['FromUserName']  # 发送人id
         to_user_id = msg['ToUserName']  # 接收人id
-        other_user_id = msg['User']['UserName']  # 聊天对方的id
-        other_user_nick = msg['User']['NickName']  # 聊天对方名称
-        other_user_remark = msg['User']['RemarkName']  # 聊天对方备注
-        other_user = other_user_id
+        other_user_id = msg['User'].get('UserName', "")  # 聊天对方的id
+        other_user_nick = msg['User'].get('NickName', "")  # 聊天对方名称
+        other_user_remark = msg['User'].get('RemarkName', "")  # 聊天对方备注
+        other_user = other_user_id if len(other_user_id) > 0 else from_user_id
         if len(other_user_nick) > 0:
             other_user = other_user_nick
         if len(other_user_remark) > 0:
