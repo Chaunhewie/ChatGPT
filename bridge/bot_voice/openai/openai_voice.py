@@ -14,7 +14,7 @@ class OpenaiVoice(Voice):
         self.name = BotVoiceOpenAI
         openai.api_key = get_conf('bot.open_ai.api_key')
 
-    def voiceToText(self, voice_file):
+    def voice_to_text(self, voice_file):
         self.info('bot_voice file name={}'.format(voice_file))
         file = open(voice_file, "rb")
         reply = openai.Audio.transcribe(get_conf("model_v2t", "whisper-1"), file)
@@ -22,5 +22,6 @@ class OpenaiVoice(Voice):
         self.info('voiceToText text={} bot_voice file name={}'.format(text, voice_file))
         return text
 
-    def textToVoice(self, text):
+    def text_to_voice(self, text):
+        self.info('text_to_voice not implemented')
         pass

@@ -1,7 +1,8 @@
 # bot_type
 BotOpenAI = "OpenAI"
 BotChatGPT = "ChatGPT"
-BotBaidu = "Baidu"
+BotBaiduUnit = "BaiduUnit"
+BotBaiduWX = "BaiduWenXin"
 
 BotVoiceBaidu = "BaiduVoice"
 BotVoiceGoogle = "GoogleVoice"

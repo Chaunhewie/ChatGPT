@@ -10,7 +10,7 @@ def create_bot(bot_type):
     :param bot_type:
     :return: channel instance
     """
-    if bot_type == const.BotBaidu:
+    if bot_type == const.BotBaiduUnit:
         # Baidu Unit对话接口
         from bridge.bot_chat.baidu.baidu_unit_bot import BaiduUnitBot
         return BaiduUnitBot()

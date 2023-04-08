@@ -8,3 +8,4 @@ pydub
 pysilk
 pyttsx3
 pydub
+wenxin-api

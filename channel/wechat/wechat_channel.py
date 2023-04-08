@@ -124,6 +124,9 @@ class WechatChannel(Channel, ABC):
         if config is None:
             self.info("[_do_handle_group_voice] group name={} not in group list and ignore".format(group_name))
             return
+        if not config.get("handle_voice", False):
+            self.info("[_do_handle_group_voice] group name={} not handle_voice and return".format(group_name))
+            return
 
         file_name = os.path.join(tmp_path(), msg['FileName'])
         msg.download(file_name)

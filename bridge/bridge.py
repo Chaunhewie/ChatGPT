@@ -15,10 +15,10 @@ class Bridge(object):
         return chat_factory.create_bot(self.parse_bot_type()).reply(query, context)
 
     def fetch_voice_to_text(self, voiceFile):
-        return voice_factory.create_voice(self.parse_bot_type_v2t()).voiceToText(voiceFile)
+        return voice_factory.create_voice(self.parse_bot_type_v2t()).voice_to_text(voiceFile)
 
     def fetch_text_to_voice(self, text):
-        return voice_factory.create_voice(self.parse_bot_type_t2v()).textToVoice(text)
+        return voice_factory.create_voice(self.parse_bot_type_t2v()).text_to_voice(text)
 
     def parse_bot_type(self):
         model_type = get_conf("model")

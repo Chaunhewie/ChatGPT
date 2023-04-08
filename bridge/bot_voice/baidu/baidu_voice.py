@@ -15,27 +15,24 @@ from conf.config import get_conf
 
 
 class BaiduVoice(Voice):
-    APP_ID = get_conf('bot.baidu_voice.app_id')
-    API_KEY = get_conf('bot.baidu_voice.api_key')
-    SECRET_KEY = get_conf('bot.baidu_voice.secret_key')
-    client = AipSpeech(APP_ID, API_KEY, SECRET_KEY)
-
     def __init__(self):
         super().__init__(BotVoiceBaidu)
         self.name = BotVoiceBaidu
+        self.client = AipSpeech(get_conf('bot.baidu_voice.app_id'), get_conf('bot.baidu_voice.api_key'), get_conf('bot.baidu_voice.secret_key'))
 
-    def voiceToText(self, voice_file):
+    def voice_to_text(self, voice_file):
+        self.info('voice_to_text not implemented')
         pass
 
-    def textToVoice(self, text):
+    def text_to_voice(self, text):
         self.info('textToVoice text={}'.format(text))
         result = self.client.synthesis(text, 'zh', 1, {'spd': 5, 'pit': 5, 'vol': 5, 'per': 111})
         if not isinstance(result, dict):
-            fileName = os.path.join(tmp_path() + '语音回复_', str(int(time.time_ns())) + '.mp3')
-            with open(fileName, 'wb') as f:
+            file_name = os.path.join(tmp_path() + '语音回复_', str(int(time.time_ns())) + '.mp3')
+            with open(file_name, 'wb') as f:
                 f.write(result)
-            self.info('bot_voice file name={}'.format(fileName))
-            return fileName
+            self.info('bot_voice file name={}'.format(file_name))
+            return file_name
         else:
             self.error('textToVoice error={}'.format(result))
             return None

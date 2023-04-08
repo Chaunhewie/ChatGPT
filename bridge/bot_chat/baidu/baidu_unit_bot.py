@@ -4,15 +4,15 @@ import json
 import requests
 
 from bridge.bot_chat.chat import Chat
-from common.const import BotBaidu
+from common.const import BotBaiduUnit
 from conf.config import get_conf
 
 
 # Baidu Unit对话接口 (可用, 但能力较弱)
 class BaiduUnitBot(Chat):
     def __init__(self):
-        super().__init__(BotBaidu)
-        self.name = BotBaidu
+        super().__init__(BotBaiduUnit)
+        self.name = BotBaiduUnit
         self.access_key = get_conf("bot.baidu.ak")
         self.secret_key = get_conf("bot.baidu.sk")
         self.get_token_url = 'https://aip.baidubce.com/oauth/2.0/token?grant_type=client_credentials&client_id=' + self.access_key + '&client_secret=' + self.secret_key

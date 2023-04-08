@@ -21,13 +21,13 @@ class Voice(object):
     def error(self, msg):
         logger.error("[{}] {}".format(self.name, msg), stacklevel=2)
 
-    def voiceToText(self, voice_file):
+    def voice_to_text(self, voice_file):
         """
         Send bot_voice to bot_voice service and get text
         """
         raise NotImplementedError
 
-    def textToVoice(self, text):
+    def text_to_voice(self, text):
         """
         Send text to bot_voice service and get bot_voice
         """
