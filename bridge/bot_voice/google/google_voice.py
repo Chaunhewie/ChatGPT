@@ -25,7 +25,7 @@ class GoogleVoice(Voice):
         self.recognizer = speech_recognition.Recognizer()
         self.engine = pyttsx3.init()
         # 语速
-        self.engine.setProperty('rate', 200)
+        self.engine.setProperty('rate', 250)
         # 音量
         self.engine.setProperty('volume', 1.0)
         self.engine.runAndWait()
@@ -76,3 +76,7 @@ class GoogleVoice(Voice):
         tts.save(text_file)
         self.info('_text_to_voice_online text={} bot_voice file name={}'.format(text, text_file))
         return text_file
+
+# with open('books/tmp.txt', 'r') as f:
+#     text = f.read()
+# GoogleVoice()._text_to_voice_offline(text)
