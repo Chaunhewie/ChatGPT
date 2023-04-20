@@ -12,7 +12,7 @@ def load_config():
     global config
     config_path = "./conf/config.json"
     if not os.path.exists(config_path):
-        raise Exception('配置文件不存在，请根据conf/config-template.json模板创建conf/config.json文件')
+        raise Exception('配置文件不存在，请根据conf/config_tmpl.json模板创建conf/config.json文件')
     with open(config_path, mode='r', encoding='utf-8') as f:
         config = json.load(f)
     logger.info("[CONF] load config: {}".format(config))
