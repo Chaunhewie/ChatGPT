@@ -10,7 +10,7 @@ if __name__ == '__main__':
         config.load_config()
 
         # create channel
-        channel = channel_factory.create_channel(config.get_conf("channel"))
+        channel = channel_factory.create_channel(config.get_conf("channel_type"))
 
         # startup channel
         channel.startup()

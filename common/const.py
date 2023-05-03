@@ -12,6 +12,7 @@ ChannelTypeWX = 'WeChat'
 ChannelTypeWXY = 'WeChaty'
 ChannelTypeWXAPI = 'WeChatAPI'
 ChannelTypeTerminal = 'Terminal'
+ChannelTypeLark = 'Lark'
 
 ContextTypeText = "TEXT"
 ContextTypeImageCreate = "IMAGE_CREATE"

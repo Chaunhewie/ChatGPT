@@ -35,7 +35,7 @@ class WechatyChannel(Channel, ABC):
 
     async def main(self):
         # 使用PadLocal协议 比较稳定(免费web协议 os.environ['WECHATY_PUPPET_SERVICE_ENDPOINT'] = '127.0.0.1:8080')
-        token = get_conf('wx.puppet_service_token')
+        token = get_conf('channel.wechaty.puppet_service_token')
         os.environ['WECHATY_PUPPET_SERVICE_TOKEN'] = token
         global bot
         bot = Wechaty()

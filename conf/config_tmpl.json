@@ -3,7 +3,7 @@
   "model_code": "code-davinci-002",
   "model_v2t": "google",
   "model_t2v": "None",
-  "channel": "WeChat",
+  "channel_type": "WeChat",
   "bot": {
     "open_ai": {
       "api_key": "YOUR OPEN API KEY IF YOU WANT TO USING CHATGPT",
@@ -28,12 +28,20 @@
       "api_key": "(NOT IMPLEMENTED) YOUR PINECONE API KEY IF YOU WANT TO USING PINECONE AS SESSION CACHE"
     }
   },
-  "wx": {
-    "app_id": "(NOT IMPLEMENTED) YOUR WECHAT BOT APPID IF YOU WANT TO USING WECHAT BOT FOR WECHAT CHANNEL",
-    "token": "(NOT IMPLEMENTED) YOUR WECHAT BOT TOKEN IF YOU WANT TO USING WECHAT BOT FOR WECHAT CHANNEL",
-    "encoding_aes_key": "(NOT IMPLEMENTED) YOUR WECHAT BOT ENCODING AES KEY IF YOU WANT TO USING WECHAT BOT FOR WECHAT CHANNEL",
-    "hot_reload": true,
-    "puppet_service_token": ""
+  "channel": {
+    "wechat": {
+      "app_id": "(NOT IMPLEMENTED) YOUR WECHAT BOT APPID IF YOU WANT TO USING WECHAT BOT FOR WECHAT CHANNEL",
+      "token": "(NOT IMPLEMENTED) YOUR WECHAT BOT TOKEN IF YOU WANT TO USING WECHAT BOT FOR WECHAT CHANNEL",
+      "encoding_aes_key": "(NOT IMPLEMENTED) YOUR WECHAT BOT ENCODING AES KEY IF YOU WANT TO USING WECHAT BOT FOR WECHAT CHANNEL",
+      "hot_reload": true
+    },
+    "wechaty": {
+      "puppet_service_token": ""
+    },
+    "lark": {
+      "host": "127.0.0.1",
+      "port": 10010
+    }
   },
   "chat": {
     "single": {

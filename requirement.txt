@@ -8,6 +8,7 @@ pydub
 pysilk
 pyttsx3
 pydub
+Flask
 wenxin-api
 beautifulsoup4
 colorama==0.4.6
